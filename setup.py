@@ -9,7 +9,7 @@ requirements = (here / "requirements.txt").read_text(encoding="utf-8").splitline
 
 setup(
     name="geekbot_cli",
-    version="0.3",
+    version='{{VERSION_PLACEHOLDER}}',
     description="Interact with Geekbot through terminal",
     long_description_content_type="text/markdown",
     url="https://github.com/geekbot-com/geekbot-cli",
