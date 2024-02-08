@@ -1,0 +1,40 @@
+# Build workflow for pip
+# GitHub CI build pipeline
+name: Geekbot CLI build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        cd src
+        python -m pip install --upgrade pip
+        if  [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    #- name: Run Unit Tests and generate coverage report
+    #  run: |
+    #    cd tests
+    #    python -m unittest -v
+    #    coverage run -m unittest
+    #    coverage report
+    #    coverage html
+    - name: Run package creation
+      run: |
+        python -m pip install --user --upgrade build
+        python -m build
+    - name: Archive package
+      uses: actions/upload-artifact@v2
+      with:
+        name: geekbot_cli
+        path: dist    
