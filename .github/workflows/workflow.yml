@@ -2,39 +2,33 @@
 # GitHub CI build pipeline
 name: Geekbot CLI build
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  release:
+    types: [created]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up python
-      uses: actions/setup-python@v2
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: '3.9'
+        cache: 'pip'
     - name: Install dependencies
       run: |
-        cd src
         python -m pip install --upgrade pip
-        if  [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    #- name: Run Unit Tests and generate coverage report
-    #  run: |
-    #    cd tests
-    #    python -m unittest -v
-    #    coverage run -m unittest
-    #    coverage report
-    #    coverage html
-    - name: Run package creation
+        pip install -r requirements.txt
+        pip install -e.
+        pip install setuptools wheel twine
+    - name: Set package version
       run: |
-        python -m pip install --user --upgrade build
-        python -m build
-    - name: Archive package
-      uses: actions/upload-artifact@v2
-      with:
-        name: geekbot_cli
-        path: dist    
+        export VERSION="${GITHUB_REF#refs/tags/v}"
+        sed -i "s/version=.*/version=\"${VERSION}\",/" setup.py
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        python setup.py bdist_wheel sdist
+        twine upload dist/*
