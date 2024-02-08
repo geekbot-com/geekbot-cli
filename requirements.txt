@@ -1,0 +1,4 @@
+click==7.1.2
+requests==2.25.1
+rich==9.13.0
+prompt_toolkit==3.0.18
