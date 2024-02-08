@@ -1,5 +1,4 @@
 # Build workflow for pip
-# GitHub CI build pipeline
 name: Geekbot CLI build
 on:
   release:
@@ -24,6 +23,8 @@ jobs:
     - name: Set package version
       run: |
         export VERSION="${GITHUB_REF#refs/tags/v}"
+        echo "sed command: sed -i \"s|version=.*|version=\\\"${VERSION}\\\",|\" setup.py"
+        echo "Version to set: ${VERSION}"
         sed -i "s/version=.*/version=\"${VERSION}\",/" setup.py
     - name: Build and publish
       env:
