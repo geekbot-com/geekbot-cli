@@ -6,7 +6,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Release Python Package
+name: Python Package Release
 on:
   release:
     types: [published]
