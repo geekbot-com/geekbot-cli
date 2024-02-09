@@ -9,7 +9,7 @@
 name: Python Package Release
 on:
   release:
-    types: [published]
+    types: [created]
 
 permissions:
   contents: read
