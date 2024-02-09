@@ -1,4 +1,4 @@
-name: PIP Release
+name: PyPi Release Workflow
 on:
   release:
     types: [created]
@@ -19,7 +19,7 @@ jobs:
         python-version: '3.x'
     - name: Update version in setup.py
       run: >-
-        sed -i "s/{{VERSION_PLACEHOLDER}}/${{ steps.tag.outputs.TAG_NAME }}/g" setup.py
+        sed -i "s/{{VERSION_PLACEHOLDER}}/${{ github.event.inputs.releaseVersion }}/g" setup.py
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
