@@ -1,8 +1,8 @@
 ## test_main.py
 import unittest
 from unittest.mock import patch
-from main import main
-from exceptions import APIKeyNotFoundError, StandupException
+from ..geekbot_cli.main import main
+from ..geekbot_cli.exceptions import APIKeyNotFoundError, StandupException
 
 class TestMain(unittest.TestCase):
 
