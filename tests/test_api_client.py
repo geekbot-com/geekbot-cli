@@ -2,8 +2,8 @@
 import unittest
 from unittest.mock import patch, Mock
 import requests
-from api_client import APIClient
-from exceptions import StandupAPIError, StandupValidationError, InvalidAPIKeyError, StandupNotFoundError
+from ..geekbot_cli.api_client import APIClient
+from ..geekbot_cli.exceptions import StandupAPIError, StandupValidationError, InvalidAPIKeyError, StandupNotFoundError
 
 class TestAPIClient(unittest.TestCase):
     def setUp(self):
