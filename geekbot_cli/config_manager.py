@@ -41,3 +41,18 @@ class ConfigManager:
             keyring.set_password(self.service_name, 'api_key', api_key)
         except keyring.errors.KeyringError as e:
             raise RuntimeError(f"Error accessing keyring: {e}")
+        
+    def delete_api_key(self) -> None:
+        """
+        Deletes the API key from the system's secure key storage.
+        
+        Raises:
+            RuntimeError: If there is an error accessing the keyring.
+        """
+        try:
+            keyring.delete_password(self.service_name, 'api_key')
+        except keyring.errors.KeyringError as e:
+            raise RuntimeError(f"Error accessing keyring: {e}")
+        except keyring.errors.PasswordDeleteError as e:
+            # This specific error occurs if the password was not found/set before.
+            raise APIKeyNotFoundError("API key not found or already deleted.")
