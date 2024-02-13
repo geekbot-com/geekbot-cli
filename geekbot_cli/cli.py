@@ -3,7 +3,7 @@ import click
 from rich.prompt import Prompt
 from geekbot_cli.api_client import APIClient
 from geekbot_cli.config_manager import ConfigManager
-from geekbot_cli.exceptions import StandupException, APIKeyNotFoundError, InvalidAPIKeyError
+from geekbot_cli.exceptions import StandupException, APIKeyNotFoundError
 from geekbot_cli.models import Standup, Question
 from typing import List, Dict
 
@@ -55,7 +55,7 @@ class CLI:
         try:
             api_key = self.config_manager.get_api_key()
 
-        except APIKeyNotFoundError or InvalidAPIKeyError as e:
+        except APIKeyNotFoundError  as e:
             console.print("Please enter your API key. Get one here:")
             console.print("https://app.geekbot.com/dashboard/api-webhooks", style="link https://app.geekbot.com/dashboard/api-webhooks")
             api_key = Prompt.ask("API key: ", password=True)
