@@ -27,5 +27,8 @@ jobs:
       run: |
         coverage report -m
         coverage xml
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      env:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: geekbot-com/geekbot-cli
