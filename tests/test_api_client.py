@@ -2,8 +2,8 @@
 import unittest
 from unittest.mock import patch, Mock
 import requests
-from ..geekbot_cli.api_client import APIClient
-from ..geekbot_cli.exceptions import StandupAPIError, StandupValidationError, InvalidAPIKeyError, StandupNotFoundError
+from geekbot_cli.api_client import APIClient
+from geekbot_cli.exceptions import StandupAPIError, StandupValidationError, InvalidAPIKeyError, StandupNotFoundError
 
 class TestAPIClient(unittest.TestCase):
     def setUp(self):
@@ -71,11 +71,17 @@ class TestAPIClient(unittest.TestCase):
         with self.assertRaises(StandupNotFoundError):
             self.api_client.post_report(999, [{'id': 1, 'text': 'Answer 1'}])  # Non-existent standup ID
 
-    @patch('requests.post')
+    @patch('geekbot_cli.api_client.requests.post')
     def test_post_report_api_error(self, mock_post):
-        mock_post.side_effect = requests.exceptions.HTTPError()
+        # Setup the mock to raise HTTPError with a specific status code
+        mock_response = Mock()
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Error message", response=Mock(status_code=500))
+        mock_post.return_value = mock_response
+
+        client = APIClient()
+
         with self.assertRaises(StandupAPIError):
-            self.api_client.post_report(1, [{'id': 1, 'text': 'Answer 1'}])
+            client.post_report(1, [{'question_id': 1, 'answer': 'Test answer'}])
 
     def test_set_headers_invalid_key(self):
         with self.assertRaises(InvalidAPIKeyError):
@@ -90,6 +96,7 @@ class TestAPIClient(unittest.TestCase):
     def test_set_headers_valid_key(self):
         valid_api_key = 'valid_api_key'
         self.api_client.set_headers(valid_api_key)
+        # Corrected to match the expected format with "Bearer" prefix
         self.assertEqual(self.api_client.headers['Authorization'], f"Bearer {valid_api_key}")
 
 if __name__ == '__main__':

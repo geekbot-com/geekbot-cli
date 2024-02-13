@@ -1,8 +1,8 @@
 ## test_config_manager.py
 import unittest
 from unittest.mock import patch
-from ..geekbot_cli.config_manager import ConfigManager
-from ..geekbot_cli.exceptions import APIKeyNotFoundError
+from geekbot_cli.config_manager import ConfigManager
+from geekbot_cli.exceptions import APIKeyNotFoundError
 
 class TestConfigManager(unittest.TestCase):
     def setUp(self):
