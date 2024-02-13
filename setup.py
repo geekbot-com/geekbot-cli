@@ -20,7 +20,8 @@ class install(_install):
 
 setup(
     name="geekbot_cli",
-    version='{{VERSION_PLACEHOLDER}}',
+    # Do not change version. It will be changed from ./github/workflows/pypi-release.yml
+    version='0.0.1',
     description="Interact with Geekbot through terminal",
     long_description_content_type="text/markdown",
     url="https://github.com/geekbot-com/geekbot-cli",
