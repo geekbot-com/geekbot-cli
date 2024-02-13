@@ -30,6 +30,13 @@ class TestMain(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         mock_get_api_key.assert_called_once()
 
+    @patch('geekbot_cli.config_manager.ConfigManager.get_api_key', side_effect=APIKeyNotFoundError)
+    def test_main_api_key_not_found(self, mock_get_api_key):
+        """
+        Test the behavior when the API key is not found during the main workflow.
+        """
+        result = self.runner.invoke(main)
+        self.assertNotEqual(result.exit_code, 1)
 
     @patch('geekbot_cli.cli.CLI.start', side_effect=StandupException)
     def test_main_standup_exception(self, mock_start):
