@@ -55,7 +55,7 @@ class CLI:
         try:
             api_key = self.config_manager.get_api_key()
 
-        except APIKeyNotFoundError as e:
+        except APIKeyNotFoundError  as e:
             console.print("Please enter your API key. Get one here:")
             console.print("https://app.geekbot.com/dashboard/api-webhooks", style="link https://app.geekbot.com/dashboard/api-webhooks")
             api_key = Prompt.ask("API key: ", password=True)

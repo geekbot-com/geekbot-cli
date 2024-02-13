@@ -41,3 +41,4 @@ class ConfigManager:
             keyring.set_password(self.service_name, 'api_key', api_key)
         except keyring.errors.KeyringError as e:
             raise RuntimeError(f"Error accessing keyring: {e}")
+        
