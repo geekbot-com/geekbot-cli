@@ -2,10 +2,21 @@
 from pathlib import Path
 
 from setuptools import Command, find_packages, setup
+from setuptools.command.install import install as _install
 
 here = Path(__file__).resolve().parent
 long_description = (here / "README.md").read_text(encoding="utf-8")
 requirements = (here / "requirements.txt").read_text(encoding="utf-8").splitlines()
+
+class install(_install):
+    def run(self):
+        _install.run(self)  # Call the original `install` command
+        print("Thank you for installing Geekbot!")
+        print("Run the application using the following command:")
+        print("$ geekbot")
+        print("For issues/contributions please visit our Github:")
+        print("https://github.com/geekbot-com/geekbot-cli")
+        
 
 setup(
     name="geekbot_cli",
@@ -23,5 +34,8 @@ setup(
         'console_scripts': [
             'geekbot=geekbot_cli.main:main',
         ],
+    },
+    cmdclass={
+        'install': install,
     },
 )
