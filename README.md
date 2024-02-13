@@ -1,9 +1,9 @@
-[![codecov](https://codecov.io/gh/geekbot-com/geekbot-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/geekbot-com/geekbot-cli)
-
 # Geekbot CLI
 ## Streamline Your Standups from the Command Line
 
 Welcome to geekbot-cli, the official command-line interface for [Geekbot](https://geekbot.com/) users. Designed to seamlessly integrate with your daily workflow, geekbot-cli empowers teams to conduct asynchronous standups, check-ins, and reports directly from their terminal. Say goodbye to context switching and streamline your communication with unparalleled convenience.
+
+[![codecov](https://codecov.io/gh/geekbot-com/geekbot-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/geekbot-com/geekbot-cli)
 
 ### Installation
 
