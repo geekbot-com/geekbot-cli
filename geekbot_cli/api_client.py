@@ -86,4 +86,4 @@ class APIClient:
         """
         if not isinstance(api_key, str) or not api_key:
             raise InvalidAPIKeyError("Invalid API key provided.")
-        self.headers['Authorization'] = f"Bearer {api_key}"
+        self.headers['Authorization'] = f"{api_key}"

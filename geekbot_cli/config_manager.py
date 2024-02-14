@@ -42,22 +42,15 @@ class ConfigManager:
         except keyring.errors.KeyringError as e:
             raise RuntimeError(f"Error accessing keyring: {e}")
         
-    def delete_api_key(service_name: str, username: str = 'api_key') -> None:
+    def delete_api_key(self, username: str = 'api_key') -> None:
         """
         Deletes a stored API key from the system's keyring.
 
         Args:
-            service_name (str): The name of the service or application.
             username (str): The username or key identifier. Defaults to 'api_key'.
         """
         try:
-            # Attempt to delete the stored password/key
-            keyring.delete_password(service_name, username)
-            print(f"Successfully deleted the key for '{service_name}' with username '{username}'.")
+            keyring.delete_password(self.service_name, username)
+            print(f"Successfully deleted the key for '{self.service_name}' with username '{username}'.")
         except Exception as e:
-            # Handle errors, such as if the key does not exist
             print(f"Failed to delete the key: {e}")
-
-    # Example usage
-    service_name = 'YourServiceName'  # Replace with your actual service name
-    delete_api_key(service_name)
