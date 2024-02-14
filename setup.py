@@ -23,6 +23,7 @@ setup(
     # Do not change version. It will be changed from ./github/workflows/pypi-release.yml
     version='0.0.1',
     description="Interact with Geekbot through terminal",
+    long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/geekbot-com/geekbot-cli",
     author="The Geekbot team",
