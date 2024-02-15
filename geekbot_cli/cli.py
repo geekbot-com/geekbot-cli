@@ -94,15 +94,18 @@ class CLI:
         selected_index = Prompt.ask("Enter the number of the standup", default="0", show_choices=False)
         try:
             selected_index = int(selected_index) - 1
-            name = standups[selected_index]['name']
-            console.print("Starting [i]" + name + "[/i]")
-            url = "https://app.geekbot.com/dashboard/w/" + str(standups[selected_index]['id'])
-            console.print(url, style="link " + url)
-            if 0 <= selected_index <= len(standups):
+            if 0 <= selected_index < len(standups):
+                name = standups[selected_index]['name']
+                console.print("Starting [i]" + name + "[/i]")
+                url = "https://app.geekbot.com/dashboard/w/" + str(standups[selected_index]['id'])
+                console.print(url, style="link " + url)
                 return standups[selected_index]
+            else:
+                console.print("Selection out of range.", style="red")
+                return None
         except ValueError:
             console.print("Invalid selection. Please enter a number.", style="red")
-        return None
+            return None
 
     def input_answers(self, questions: List[Dict]) -> List[Dict]:
         """

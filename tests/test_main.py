@@ -1,5 +1,7 @@
 ## test_main.py
 import unittest
+import subprocess
+import sys
 from unittest.mock import patch
 from click.testing import CliRunner
 from geekbot_cli.main import main
@@ -38,6 +40,23 @@ class TestMain(unittest.TestCase):
         """
         result = self.runner.invoke(main)
         self.assertNotEqual(result.exit_code, 0)
+
+    @patch('geekbot_cli.cli.CLI.start', side_effect=StandupException("Standup error"))
+    def test_main_standup_exception_error(self, mock_cli_start):
+        """
+        Test the behavior when a StandupException is raised during the main workflow.
+        """
+        result = self.runner.invoke(main)
+        # Check that the exit code indicates an error
+        self.assertEqual(result.exit_code, 1)
+        # Check that the specific error message is displayed to the user
+        self.assertIn("Error: A standup exception occurred.", result.output)
+        mock_cli_start.assert_called_once()
+
+    
+
+
+    
 
 if __name__ == '__main__':
     unittest.main()
