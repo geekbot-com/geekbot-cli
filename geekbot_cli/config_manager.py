@@ -51,6 +51,5 @@ class ConfigManager:
         """
         try:
             keyring.delete_password(self.service_name, username)
-            print(f"Successfully deleted the key for '{self.service_name}' with username '{username}'.")
         except Exception as e:
-            print(f"Failed to delete the key: {e}")
+            print(f"Failed to remove the key: {e}")
