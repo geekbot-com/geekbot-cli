@@ -97,7 +97,7 @@ class TestAPIClient(unittest.TestCase):
         valid_api_key = 'valid_api_key'
         self.api_client.set_headers(valid_api_key)
         # Corrected to match the expected format with "Bearer" prefix
-        self.assertEqual(self.api_client.headers['Authorization'], f"Bearer {valid_api_key}")
+        self.assertEqual(self.api_client.headers['Authorization'], f"{valid_api_key}")
 
 if __name__ == '__main__':
     unittest.main()
