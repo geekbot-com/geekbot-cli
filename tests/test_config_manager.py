@@ -51,17 +51,22 @@ class TestConfigManager(unittest.TestCase):
     def test_delete_api_key_error(self, mock_delete_password):
         """
         Test that the delete_api_key method prints an error message
-        when keyring.delete_password fails.
+        and exits with sys.exit(1) when keyring.delete_password fails.
         """
         # Setup the mock to raise an exception when called
         mock_delete_password.side_effect = Exception('Failed to delete the key')
 
         # Use StringIO object to capture stdout
         with patch('sys.stdout', new=StringIO()) as fake_out:
-            self.config_manager.delete_api_key()
+            # Expect SystemExit to be raised due to sys.exit(1) in the method
+            with self.assertRaises(SystemExit) as cm:
+                self.config_manager.delete_api_key()
+
+            # Check the exit code
+            self.assertEqual(cm.exception.code, 1)
 
             # Check that the expected error message was printed to stdout
-            self.assertIn("Failed to delete the key", fake_out.getvalue())
+            self.assertIn("Failed to remove the key: Failed to delete the key", fake_out.getvalue())
 
 if __name__ == '__main__':
     unittest.main()
