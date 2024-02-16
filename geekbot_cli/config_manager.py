@@ -1,5 +1,6 @@
 import keyring
 from geekbot_cli.exceptions import APIKeyNotFoundError
+import sys
 
 class ConfigManager:
     """
@@ -53,3 +54,4 @@ class ConfigManager:
             keyring.delete_password(self.service_name, username)
         except Exception as e:
             print(f"Failed to remove the key: {e}")
+            sys.exit(1)
