@@ -1,10 +1,11 @@
 # test_cli.py
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, call
 from click.testing import CliRunner
 from geekbot_cli.cli import main, CLI
 from geekbot_cli.exceptions import StandupException,APIKeyNotFoundError, StandupAPIError
 from geekbot_cli.cli import get_multiline_input
+from geekbot_cli.api_client import APIClient
 
 class TestCLI(unittest.TestCase):
 
@@ -215,7 +216,77 @@ class TestCLI(unittest.TestCase):
         mock_config_manager_class.assert_called_once()
         mock_cli_instance.start.assert_called_once()
 
+    def test_send_report_calls_api_client_with_correct_args(self):
+        self.cli_instance.api_client = MagicMock()
+        self.cli_instance.api_client.post_report = MagicMock(return_value={'some_key': 'some_value'})
+        
+        standup_id = 123
+        answers = [{'id': 1, 'text': 'Test answer'}]
+        
+        self.cli_instance.send_report(standup_id, answers)
+        
+        self.cli_instance.api_client.post_report.assert_called_once_with(standup_id, answers)
+
+    @patch('geekbot_cli.cli.console.print')
+    def test_input_answers_unhandled_question_type(self, mock_console_print):
+        # Setup a question with an unhandled answer type
+        questions = [{
+            'id': 999,
+            'text': 'This is a test question with an unhandled type',
+            'color': 'blue',
+            'answer_type': 'unhandled_type'
+        }]
+
+        # Call the method under test with the mock question
+        self.cli_instance.input_answers(questions)
+
+        # Assert that console.print was called with the expected message
+        expected_message = "Unhandled question type: unhandled_type"
+        mock_console_print.assert_called_with(expected_message)
 
 
+    def test_handle_newline_event(self):
+        # Setup
+        api_client_mock = MagicMock()
+        config_manager_mock = MagicMock()
+        cli_instance = CLI(api_client=api_client_mock, config_manager=config_manager_mock)
+
+        # Create a mock event object with the required structure
+        mock_event = MagicMock()
+        mock_event.current_buffer = MagicMock()
+
+        # Directly call the method under test with the mock event
+        cli_instance.handle_newline_event(mock_event)
+
+        # Assert that insert_text was called with '\n' on the mock_event's current_buffer
+        mock_event.current_buffer.insert_text.assert_called_with('\n')
+
+
+    @patch('geekbot_cli.cli.console.print')  # Mock console.print to prevent actual output
+    @patch('builtins.input', side_effect=['First line', 'Second line', '', 'Unexpected line'])
+    def test_get_multiline_input_multi_line(self, mock_input, mock_console_print):
+        """
+        Test get_multiline_input function with multiple lines of input, ending with an empty line.
+        """
+        prompt_color = 'green'
+        answer_type = 'text'
+
+        # Call the function under test
+        result = get_multiline_input(prompt_color, answer_type)
+
+        # Check that the result is as expected
+        self.assertEqual(result, 'First line\nSecond line')
+
+        # Verify input was called the correct number of times (3 times, because the loop breaks on the empty input)
+        self.assertEqual(mock_input.call_count, 3)
+
+        # Verify console.print was called with the prompt
+        expected_prompt_calls = [
+            call(f"[#{prompt_color}]> [/#{prompt_color}]", end=""),
+            call(f"[#{prompt_color}]> [/#{prompt_color}]", end=""),
+            call(f"[#{prompt_color}]> [/#{prompt_color}]", end="")
+        ]
+        mock_console_print.assert_has_calls(expected_prompt_calls, any_order=True)
+    
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() # pragma: no cover

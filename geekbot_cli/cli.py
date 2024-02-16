@@ -38,9 +38,9 @@ def get_table_item(standup, index):
 
 class CLI:
 
-    def _(event):
+    def handle_newline_event(self, event):
         """
-        Insert a newline without submitting when Shift+Enter is pressed.
+        Handles inserting a newline without submitting when Shift+Enter is pressed.
         """
         event.current_buffer.insert_text('\n')
 
@@ -119,26 +119,19 @@ class CLI:
         """
         answers = {}
         for question in questions:
-            console.print("[#" + question['color'] + "]| [/#" + question['color'] + "]" + question['text'], style="bold")
-            if question['answer_type'] == 'text' or question['answer_type'] == 'numeric':
+            answer = None  # Initialize answer to avoid UnboundLocalError
+            console.print(f"[#{question['color']}]| [/#{question['color']}] {question['text']}", style="bold")
+            if question['answer_type'] in ['text', 'numeric']:
                 answer = get_multiline_input(question['color'], question['answer_type'])
             elif question['answer_type'] == 'multiple_choice':
-                # todo: This method will create a fullscreen window in order to get user's selection
-                #  It should be displayed right after the question
-                #  If this isn't possible, here is an alternative approach: https://python-prompt-toolkit.readthedocs.io/en/master/pages/asking_for_input.html#autocompletion
-                dialog_choices = []
-                for q in question['answer_choices']:
-                    dialog_choices.append((q, q))
-
-                answer = radiolist_dialog(
-                    title="Choose one",
-                    text=question['text'],
-                    values=dialog_choices
-                ).run()
+                dialog_choices = [(choice, choice) for choice in question.get('answer_choices', [])]
+                answer = radiolist_dialog(title="Choose one", text=question['text'], values=dialog_choices).run()
             else:
-                # todo: raise exception
-                console.print("Unhandled question type: " + question['answer_type'])
-            answers[question['id']] ={'text': answer}
+                console.print(f"Unhandled question type: {question['answer_type']}")
+                continue  # Skip adding this question to answers
+
+            if answer is not None:
+                answers[question['id']] = {'text': answer}
         return answers
 
     def send_report(self, standup_id: int, answers: List[Dict]) -> Dict:
@@ -166,4 +159,4 @@ def main():
     cli.start()
 
 if __name__ == '__main__':
-    main()
+    main() # pragma: no cover

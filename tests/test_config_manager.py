@@ -1,5 +1,6 @@
 ## test_config_manager.py
 import unittest
+import keyring
 from unittest.mock import patch
 from geekbot_cli.config_manager import ConfigManager
 from geekbot_cli.exceptions import APIKeyNotFoundError
@@ -33,5 +34,19 @@ class TestConfigManager(unittest.TestCase):
             self.config_manager.save_api_key('new_test_api_key')
         self.assertTrue('Error accessing keyring' in str(context.exception))
 
+    @patch('keyring.get_password')
+    def test_get_api_key_keyring_error(self, mock_get_password):
+        mock_get_password.side_effect = keyring.errors.KeyringError("Keyring access error")
+        with self.assertRaises(RuntimeError) as context:
+            self.config_manager.get_api_key()
+        self.assertIn("Error accessing keyring: Keyring access error", str(context.exception))
+
+    @patch('keyring.set_password')
+    def test_save_api_key_keyring_error(self, mock_set_password):
+        mock_set_password.side_effect = keyring.errors.KeyringError("Keyring save error")
+        with self.assertRaises(RuntimeError) as context:
+            self.config_manager.save_api_key('dummy_api_key')
+        self.assertIn("Error accessing keyring: Keyring save error", str(context.exception))
+
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() # pragma: no cover

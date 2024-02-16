@@ -40,4 +40,4 @@ class TestQuestion(unittest.TestCase):
         self.assertEqual(question.to_dict(), expected_dict)
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() # pragma: no cover

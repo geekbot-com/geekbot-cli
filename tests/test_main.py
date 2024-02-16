@@ -6,6 +6,7 @@ from unittest.mock import patch
 from click.testing import CliRunner
 from geekbot_cli.main import main
 from geekbot_cli.exceptions import APIKeyNotFoundError, StandupException
+from geekbot_cli.config_manager import ConfigManager
 
 
 class TestMain(unittest.TestCase):
@@ -53,10 +54,11 @@ class TestMain(unittest.TestCase):
         self.assertIn("Error: A standup exception occurred.", result.output)
         mock_cli_start.assert_called_once()
 
-    
-
-
-    
+    @patch('geekbot_cli.cli.CLI.start', side_effect=APIKeyNotFoundError("API key not found"))
+    def test_main_api_key_not_found_exception(self, mock_cli_start):
+        result = self.runner.invoke(main)
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Error: API key not found. Please configure your API key.", result.output)
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() # pragma: no cover
