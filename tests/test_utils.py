@@ -27,4 +27,4 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(True, "Environment setup is valid.")
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() # pragma: no cover

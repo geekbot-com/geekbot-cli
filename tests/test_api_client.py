@@ -4,6 +4,7 @@ from unittest.mock import patch, Mock
 import requests
 from geekbot_cli.api_client import APIClient
 from geekbot_cli.exceptions import StandupAPIError, StandupValidationError, InvalidAPIKeyError, StandupNotFoundError
+from requests.exceptions import RequestException
 
 class TestAPIClient(unittest.TestCase):
     def setUp(self):
@@ -99,5 +100,30 @@ class TestAPIClient(unittest.TestCase):
         # Corrected to match the expected format with "Bearer" prefix
         self.assertEqual(self.api_client.headers['Authorization'], f"{valid_api_key}")
 
+
+    @patch('requests.post')
+    def test_post_report_unhandled_http_error(self, mock_post):
+        # Simulate an HTTP response with a status code that isn't explicitly handled in the code
+        mock_response = Mock()
+        mock_response.status_code = 403  # Forbidden error, as an example
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("403 Forbidden", response=mock_response)
+        mock_post.return_value = mock_response
+
+        with self.assertRaises(StandupAPIError):
+            self.api_client.post_report(1, [{'id': 1, 'text': 'This should trigger an unhandled HTTP error.'}])
+
+
+    @patch('requests.get')
+    def test_get_standups_request_exception(self, mock_get):
+        mock_get.side_effect = RequestException("A general request exception occurred")
+        with self.assertRaises(StandupAPIError):
+            self.api_client.get_standups()
+
+    @patch('requests.post')
+    def test_post_report_request_exception(self, mock_post):
+        mock_post.side_effect = RequestException("A general request exception occurred during post")
+        with self.assertRaises(StandupAPIError):
+            self.api_client.post_report(standup_id=1, answers=[{'id': 1, 'text': 'Sample Answer'}])
+
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() # pragma: no cover

@@ -30,4 +30,4 @@ def main(clear_api_key):
             sys.exit(1)
 
 if __name__ == '__main__':
-    main()
+    main() # pragma: no cover

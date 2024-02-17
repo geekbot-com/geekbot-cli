@@ -1,9 +1,12 @@
 ## test_main.py
 import unittest
+import subprocess
+import sys
 from unittest.mock import patch
 from click.testing import CliRunner
 from geekbot_cli.main import main
 from geekbot_cli.exceptions import APIKeyNotFoundError, StandupException
+from geekbot_cli.config_manager import ConfigManager
 
 
 class TestMain(unittest.TestCase):
@@ -61,5 +64,25 @@ class TestMain(unittest.TestCase):
         result = self.runner.invoke(main)
         self.assertNotEqual(result.exit_code, 0)
 
+    @patch('geekbot_cli.cli.CLI.start', side_effect=StandupException("Standup error"))
+    def test_main_standup_exception_error(self, mock_cli_start):
+        """
+        Test the behavior when a StandupException is raised during the main workflow.
+        """
+        result = self.runner.invoke(main)
+        # Check that the exit code indicates an error
+        self.assertEqual(result.exit_code, 1)
+        # Check that the specific error message is displayed to the user
+        self.assertIn("Error: Standup error", result.output)
+        mock_cli_start.assert_called_once()
+
+    @patch('geekbot_cli.cli.CLI.start', side_effect=APIKeyNotFoundError("API key not found"))
+    def test_main_api_key_not_found_exception(self, mock_cli_start):
+        result = self.runner.invoke(main)
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Error: API key not found", result.output)
+
+    
+    
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() # pragma: no cover
