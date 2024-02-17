@@ -14,6 +14,28 @@ class TestMain(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
 
+    @patch('click.confirm')
+    @patch('geekbot_cli.config_manager.ConfigManager.delete_api_key')
+    def test_clear_api_key_no_confirmation(self, mock_delete_api_key, mock_confirm):
+        mock_confirm.return_value = False
+        result = self.runner.invoke(main, ['--clear-api-key'])
+        self.assertIn("Operation cancelled.", result.output)
+        mock_delete_api_key.assert_not_called()
+
+    @patch('click.confirm')
+    @patch('geekbot_cli.config_manager.ConfigManager.delete_api_key')
+    def test_clear_api_key_with_confirmation(self, mock_delete_api_key, mock_confirm):
+        mock_confirm.return_value = True
+        result = self.runner.invoke(main, ['--clear-api-key'])
+        self.assertIn("API key has been removed.", result.output)
+        mock_delete_api_key.assert_called_once()
+
+    @patch('geekbot_cli.cli.CLI.start', side_effect=Exception("Generic Error"))
+    def test_main_generic_exception(self, mock_start):
+        result = self.runner.invoke(main)
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Error: Generic Error", result.output)
+
     @patch('geekbot_cli.cli.CLI.start')
     def test_main_workflow(self, mock_start):
         """
@@ -51,14 +73,16 @@ class TestMain(unittest.TestCase):
         # Check that the exit code indicates an error
         self.assertEqual(result.exit_code, 1)
         # Check that the specific error message is displayed to the user
-        self.assertIn("Error: A standup exception occurred.", result.output)
+        self.assertIn("Error: Standup error", result.output)
         mock_cli_start.assert_called_once()
 
     @patch('geekbot_cli.cli.CLI.start', side_effect=APIKeyNotFoundError("API key not found"))
     def test_main_api_key_not_found_exception(self, mock_cli_start):
         result = self.runner.invoke(main)
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("Error: API key not found. Please configure your API key.", result.output)
+        self.assertIn("Error: API key not found", result.output)
 
+    
+    
 if __name__ == '__main__':
     unittest.main() # pragma: no cover

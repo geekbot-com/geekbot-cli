@@ -4,6 +4,7 @@ import keyring
 from unittest.mock import patch
 from geekbot_cli.config_manager import ConfigManager
 from geekbot_cli.exceptions import APIKeyNotFoundError
+from io import StringIO
 
 class TestConfigManager(unittest.TestCase):
     def setUp(self):
@@ -47,6 +48,19 @@ class TestConfigManager(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             self.config_manager.save_api_key('dummy_api_key')
         self.assertIn("Error accessing keyring: Keyring save error", str(context.exception))
+
+    @patch('keyring.delete_password')
+    def test_delete_api_key_success(self, mock_delete_password):
+        self.config_manager.delete_api_key()
+        mock_delete_password.assert_called_once_with(self.config_manager.service_name, 'api_key')
+
+    @patch('keyring.delete_password')
+    def test_delete_api_key_error(self, mock_delete_password):
+        mock_delete_password.side_effect = Exception("Deletion error")
+        with self.assertRaises(SystemExit) as cm:
+            self.config_manager.delete_api_key()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertTrue(mock_delete_password.called)
 
 if __name__ == '__main__':
     unittest.main() # pragma: no cover
