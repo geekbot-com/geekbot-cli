@@ -1,0 +1,8 @@
+{
+    "git_directories": [
+        "/path/to/first/directory",
+        "/path/to/second/directory",
+        "/another/path/to/directory",
+        "C:/path/to/windows/directory"
+    ]
+}

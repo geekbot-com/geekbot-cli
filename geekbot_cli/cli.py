@@ -1,16 +1,18 @@
 ## cli.py
 import click
-from rich.prompt import Prompt
+from rich.prompt import Prompt, Confirm
+from prompt_toolkit.shortcuts import checkboxlist_dialog
 from geekbot_cli.api_client import APIClient
 from geekbot_cli.config_manager import ConfigManager
 from geekbot_cli.exceptions import StandupException, APIKeyNotFoundError, InvalidAPIKeyError
 from geekbot_cli.models import Standup, Question
 from typing import List, Dict
-
+import os
 from rich.console import Console
 from rich.columns import Columns
 from rich.panel import Panel
 from prompt_toolkit.shortcuts import radiolist_dialog
+from geekbot_cli.git_integration import GitIntegration
 
 
 console = Console()
@@ -47,6 +49,7 @@ class CLI:
     def __init__(self, api_client: APIClient, config_manager: ConfigManager):
         self.api_client = api_client
         self.config_manager = config_manager
+        self.git_integration = GitIntegration()
 
     def start(self) -> None:
         """
@@ -135,7 +138,37 @@ class CLI:
             else:
                 # todo: raise exception
                 console.print("Unhandled question type: " + question['answer_type'])
-            answers[question['id']] ={'text': answer}
+
+            # Check if the question contains 'done'
+            if 'done' in question['text'].lower():
+                include_git = Confirm.ask("Do you want to include git commits in your report?")
+                if include_git:
+                    git_dirs = self.config_manager.get_git_directories()
+                    git_repos = self.git_integration.find_git_repos(git_dirs)
+                    repo_choices = [(repo, os.path.basename(repo)) for repo in git_repos]
+                    selected_repos = checkboxlist_dialog(
+                        title="Select Repositories",
+                        text="Choose which repositories' commits to include:",
+                        values=repo_choices
+                    ).run()
+
+                    for repo in selected_repos:
+                        commits = self.git_integration.get_recent_commits(repo)
+                        # Convert commits to a format suitable for checkboxlist_dialog
+                        commit_choices = [(f"{commit['hash']}: {commit['message']}", commit['message']) for commit in commits]
+                        selected_commits = checkboxlist_dialog(
+                            title="Select Commits",
+                            text=f"Choose which commits from {os.path.basename(repo)} to include:",
+                            values=commit_choices
+                        ).run()
+
+                        # Compile the selected commit messages into the answer
+                        commit_messages = "\n".join(selected_commits)
+                        answer = answers.get(question['id'], {}).get('text', '')
+                        answer += f"\nCommits from {os.path.basename(repo)}:\n{commit_messages}"
+                        print(answer)
+                        answers[question['id']] = {'text': answer}
+                        
         return answers
 
     def send_report(self, standup_id: int, answers: List[Dict]) -> Dict:

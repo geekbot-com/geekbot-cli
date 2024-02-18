@@ -5,7 +5,7 @@ from geekbot_cli.cli import CLI
 import sys
 import json
 
-git_json = ''
+git_json = 'geekbot_cli/git_directories.json'
 
 @click.command()
 @click.option('--clear-api-key', is_flag=True, help='Removes the saved API key from keyring')
