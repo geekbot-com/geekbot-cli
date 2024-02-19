@@ -17,6 +17,9 @@ console = Console()
 
 def get_multiline_input(prompt_color, answer_type):
     lines = []
+    # Display the instruction only for plain text questions
+    if answer_type == 'text':
+        console.print("[italic]Leave a blank line to continue[/italic]")
     while True:
         console.print("[#" + prompt_color + "]> [/#" + prompt_color + "]", end="")
         line = input("")
@@ -28,7 +31,7 @@ def get_multiline_input(prompt_color, answer_type):
             return line    
                 
         if line == "":
-            break  # Finish on empty input
+            break  # Finish on empty input for text questions
         lines.append(line)
     return "\n".join(lines)
 
