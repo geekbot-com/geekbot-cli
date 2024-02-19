@@ -6,7 +6,8 @@ from geekbot_cli.config_manager import ConfigManager
 from geekbot_cli.exceptions import StandupException, APIKeyNotFoundError, InvalidAPIKeyError
 from geekbot_cli.models import Standup, Question
 from typing import List, Dict
-
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
 from rich.console import Console
 from rich.columns import Columns
 from rich.panel import Panel
@@ -32,9 +33,9 @@ def get_multiline_input(prompt_color, answer_type):
         lines.append(line)
     return "\n".join(lines)
 
-def get_table_item(standup, index):
+def get_table_item(standup):
     """Extract text from standups to display in table."""
-    return f"[b]({index+1}[/b])\n[yellow]{standup['name']}"
+    return f"[yellow]{standup['name']}"
 
 class CLI:
 
@@ -80,7 +81,7 @@ class CLI:
 
     def select_standup(self, standups: List[Dict]) -> Dict:
         """
-        Displays a list of standups and prompts the user to select one.
+        Displays a list of standups and prompts the user to select one by typing its name with autocomplete support.
 
         Args:
             standups: A list of standup dictionaries.
@@ -89,19 +90,24 @@ class CLI:
             The selected standup dictionary or None if no selection is made.
         """
         console.print("Please select a standup to report on:", style="bold")
-        renderables = [Panel(get_table_item(standup, index), expand=True) for index, standup in enumerate(standups)]
+        renderables = [Panel(get_table_item(standup), expand=True) for standup in standups]
         console.print(Columns(renderables))
-        selected_index = Prompt.ask("Enter the number of the standup", default="0", show_choices=False)
-        try:
-            selected_index = int(selected_index) - 1
-            name = standups[selected_index]['name']
-            console.print("Starting [i]" + name + "[/i]")
-            url = "https://app.geekbot.com/dashboard/w/" + str(standups[selected_index]['id'])
-            console.print(url, style="link " + url)
-            if 0 <= selected_index <= len(standups):
-                return standups[selected_index]
-        except ValueError:
-            console.print("Invalid selection. Please enter a number.", style="red")
+
+        standup_names = [standup['name'] for standup in standups]
+        standup_completer = WordCompleter(standup_names, ignore_case=True, match_middle=True)
+        session = PromptSession()
+
+        selected_name = session.prompt("Type the standup name (press tab to autocomplete): ", completer=standup_completer)
+        selected_standup = next((standup for standup in standups if standup['name'].lower() == selected_name.lower()), None)
+
+        if selected_standup:
+            console.print(f"Starting [i]{selected_standup['name']}[/i]")
+            url = f"https://app.geekbot.com/dashboard/w/{selected_standup['id']}"
+            console.print(url, style=f"link {url}")
+            return selected_standup
+        else:
+            console.print("Standup not found. Please ensure you've entered the name correctly.", style="red")
+
         return None
 
     def input_answers(self, questions: List[Dict]) -> List[Dict]:
