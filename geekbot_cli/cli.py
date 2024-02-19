@@ -107,7 +107,7 @@ class CLI:
             console.print("Invalid selection. Please enter a number.", style="red")
         return None
 
-    def input_answers(self, questions: List[Dict]) -> List[Dict]:
+    def input_answers(self, questions: List[Dict]) -> Dict:
         """
         Prompts the user to answer each question for the selected standup.
 
@@ -115,32 +115,25 @@ class CLI:
             questions: A list of question dictionaries.
 
         Returns:
-            A list of answer dictionaries.
+            A dictionary of answer dictionaries.
         """
         answers = {}
         for question in questions:
             console.print("[#" + question['color'] + "]| [/#" + question['color'] + "]" + question['text'], style="bold")
             if question['answer_type'] == 'text' or question['answer_type'] == 'numeric':
-                answer = get_multiline_input(question['color'], question['answer_type'])
+                answer_text = get_multiline_input(question['color'], question['answer_type'])
             elif question['answer_type'] == 'multiple_choice':
-                # todo: This method will create a fullscreen window in order to get user's selection
-                #  It should be displayed right after the question
-                #  If this isn't possible, here is an alternative approach: https://python-prompt-toolkit.readthedocs.io/en/master/pages/asking_for_input.html#autocompletion
-                dialog_choices = []
-                for q in question['answer_choices']:
-                    dialog_choices.append((q, q))
-
-                answer = radiolist_dialog(
+                dialog_choices = [(q, q) for q in question['answer_choices']]
+                answer_text = radiolist_dialog(
                     title="Choose one",
                     text=question['text'],
                     values=dialog_choices
                 ).run()
             else:
-                # todo: raise exception
                 console.print("Unhandled question type: " + question['answer_type'])
+                continue
 
-            # Check if the question contains 'done'
-            if 'done' in question['text'].lower():
+            if 'plain' in question['text'].lower():
                 include_git = Confirm.ask("Do you want to include git commits in your report?")
                 if include_git:
                     git_dirs = self.config_manager.get_git_directories()
@@ -154,21 +147,18 @@ class CLI:
 
                     for repo in selected_repos:
                         commits = self.git_integration.get_recent_commits(repo)
-                        # Convert commits to a format suitable for checkboxlist_dialog
                         commit_choices = [(f"{commit['hash']}: {commit['message']}", commit['message']) for commit in commits]
                         selected_commits = checkboxlist_dialog(
                             title="Select Commits",
                             text=f"Choose which commits from {os.path.basename(repo)} to include:",
                             values=commit_choices
                         ).run()
-
-                        # Compile the selected commit messages into the answer
                         commit_messages = "\n".join(selected_commits)
-                        answer = answers.get(question['id'], {}).get('text', '')
-                        answer += f"\nCommits from {os.path.basename(repo)}:\n{commit_messages}"
-                        print(answer)
-                        answers[question['id']] = {'text': answer}
-                        
+                        answer_text += f"\nCommits from {os.path.basename(repo)}:\n{commit_messages}"
+                        print(answer_text)
+            # Store the answer using the question ID as the key
+            answers[question['id']] = {'text': answer_text}
+            
         return answers
 
     def send_report(self, standup_id: int, answers: List[Dict]) -> Dict:
