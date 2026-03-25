@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { Command } from "commander";
 
 const mockHandlers = {
@@ -12,6 +12,10 @@ mock.module("../../../src/errors/error-handler.ts", () => ({
 
 import { createTeamCommand } from "../../../src/cli/commands/team.ts";
 import { addGlobalOptions } from "../../../src/cli/globals.ts";
+
+afterAll(() => {
+	mock.restore();
+});
 
 describe("createTeamCommand", () => {
 	beforeEach(() => {

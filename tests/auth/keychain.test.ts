@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 // ── Mock Setup ───────────────────────────────────────────────────────
 // Mock the underlying @napi-rs/keyring Entry so we never touch the real
@@ -77,6 +77,10 @@ beforeEach(() => {
 	mockGetPassword.mockImplementation(() => "stored-api-key");
 	mockSetPassword.mockImplementation((_password: string) => {});
 	mockDeletePassword.mockImplementation(() => {});
+});
+
+afterAll(() => {
+	mock.restore();
 });
 
 // ── getKeychainKey ───────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { Standup } from "../../src/schemas/standup.ts";
 
 /**
@@ -126,6 +126,10 @@ beforeEach(() => {
 	mockBuildNotFoundSuggestion.mockImplementation(() =>
 		Promise.resolve("Available standups: 42 (Daily Standup)"),
 	);
+});
+
+afterAll(() => {
+	mock.restore();
 });
 
 // ── handleStandupList ────────────────────────────────────────────────

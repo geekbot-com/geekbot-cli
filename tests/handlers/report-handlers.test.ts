@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 // --- Mocks ---
 
@@ -84,6 +84,10 @@ const sampleSubmittedReport = {
 	],
 	is_anonymous: false,
 };
+
+afterAll(() => {
+	mock.restore();
+});
 
 describe("handleReportList", () => {
 	beforeEach(() => {

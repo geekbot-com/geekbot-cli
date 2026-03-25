@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { Command } from "commander";
 
 const mockHandleError = mock();
@@ -15,6 +15,10 @@ mock.module("../../../src/errors/error-handler.ts", () => ({
 
 import { createPollCommand } from "../../../src/cli/commands/poll.ts";
 import { addGlobalOptions } from "../../../src/cli/globals.ts";
+
+afterAll(() => {
+	mock.restore();
+});
 
 describe("createPollCommand", () => {
 	beforeEach(() => {

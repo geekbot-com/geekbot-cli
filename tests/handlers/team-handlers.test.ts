@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 // --- Mocks ---
 
@@ -56,6 +56,10 @@ const sampleTeamResponse = {
 		},
 	],
 };
+
+afterAll(() => {
+	mock.restore();
+});
 
 describe("handleTeamList", () => {
 	beforeEach(() => {

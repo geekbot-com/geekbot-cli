@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 /**
  * Auth handlers test suite.
@@ -90,6 +90,10 @@ beforeEach(() => {
 	mockSetKeychainKey.mockReset();
 	mockDeleteKeychainKey.mockReset();
 	mockWriteOutput.mockReset();
+});
+
+afterAll(() => {
+	mock.restore();
 });
 
 // ── handleAuthSetup ──────────────────────────────────────────────────

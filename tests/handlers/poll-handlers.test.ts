@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 /**
  * Poll handlers test suite.
@@ -152,6 +152,10 @@ beforeEach(() => {
 	mockBuildNotFoundSuggestion.mockImplementation(() =>
 		Promise.resolve("Available polls: 456 (Lunch Poll)"),
 	);
+});
+
+afterAll(() => {
+	mock.restore();
 });
 
 // ── handlePollList ────────────────────────────────────────────────────
