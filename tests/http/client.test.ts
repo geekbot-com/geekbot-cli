@@ -1,9 +1,9 @@
-import { afterAll, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { CliError } from "../../src/errors/cli-error.ts";
 import { createHttpClient } from "../../src/http/client.ts";
 import { APP_VERSION } from "../../src/utils/constants.ts";
 
-const mockFetch = spyOn(globalThis, "fetch");
+const mockFetch = mock<typeof fetch>();
 
 const originalSleep = Bun.sleep;
 
@@ -14,9 +14,13 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-	mockFetch.mockRestore();
 	(Bun as { sleep: typeof Bun.sleep }).sleep = originalSleep;
 });
+
+/** Helper: create client with injected mock fetch */
+function testClient(apiKey = "test-key", debug = false) {
+	return createHttpClient(apiKey, { debug, fetch: mockFetch });
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
@@ -38,30 +42,30 @@ function errorResponse(
 
 describe("createHttpClient", () => {
 	test("returns object with all 5 HTTP methods", () => {
-		const client = createHttpClient("test-key");
-		expect(typeof client.get).toBe("function");
-		expect(typeof client.post).toBe("function");
-		expect(typeof client.patch).toBe("function");
-		expect(typeof client.put).toBe("function");
-		expect(typeof client.delete).toBe("function");
+		const c = createHttpClient("test-key");
+		expect(typeof c.get).toBe("function");
+		expect(typeof c.post).toBe("function");
+		expect(typeof c.patch).toBe("function");
+		expect(typeof c.put).toBe("function");
+		expect(typeof c.delete).toBe("function");
 	});
 
 	test("accepts debug option", () => {
-		const client = createHttpClient("test-key", { debug: true });
-		expect(typeof client.get).toBe("function");
+		const c = createHttpClient("test-key", { debug: true });
+		expect(typeof c.get).toBe("function");
 	});
 
 	test("accepts debug: false option", () => {
-		const client = createHttpClient("test-key", { debug: false });
-		expect(typeof client.get).toBe("function");
+		const c = createHttpClient("test-key", { debug: false });
+		expect(typeof c.get).toBe("function");
 	});
 });
 
 describe("GET requests", () => {
 	test("calls fetch with correct method and headers", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1 }));
-		const client = createHttpClient("my-api-key");
-		await client.get("/v1/standups");
+		const c = testClient("my-api-key");
+		await c.get("/v1/standups");
 
 		expect(mockFetch).toHaveBeenCalledTimes(1);
 		const [url, init] = mockFetch.mock.calls[0]!;
@@ -76,8 +80,8 @@ describe("GET requests", () => {
 
 	test("appends query params to URL", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse([]));
-		const client = createHttpClient("test-key");
-		await client.get("/v1/standups", { user_id: "5" });
+		const c = testClient();
+		await c.get("/v1/standups", { user_id: "5" });
 
 		const [url] = mockFetch.mock.calls[0]!;
 		expect(String(url)).toContain("?user_id=5");
@@ -85,15 +89,15 @@ describe("GET requests", () => {
 
 	test("returns parsed JSON body on success", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Daily" }));
-		const client = createHttpClient("test-key");
-		const result = await client.get<{ id: number; name: string }>("/v1/standups");
+		const c = testClient();
+		const result = await c.get<{ id: number; name: string }>("/v1/standups");
 		expect(result).toEqual({ id: 42, name: "Daily" });
 	});
 
 	test("returns null for 204 No Content", async () => {
 		mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
-		const client = createHttpClient("test-key");
-		const result = await client.get("/v1/standups/1");
+		const c = testClient();
+		const result = await c.get("/v1/standups/1");
 		expect(result).toBeNull();
 	});
 });
@@ -101,15 +105,15 @@ describe("GET requests", () => {
 describe("DELETE requests", () => {
 	test("delete method returns null for 204 response", async () => {
 		mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
-		const client = createHttpClient("test-key");
-		const result = await client.delete("/v1/standups/42");
+		const c = testClient();
+		const result = await c.delete("/v1/standups/42");
 		expect(result).toBeNull();
 	});
 
 	test("delete calls fetch with DELETE method", async () => {
 		mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
-		const client = createHttpClient("test-key");
-		await client.delete("/v1/standups/42");
+		const c = testClient();
+		await c.delete("/v1/standups/42");
 
 		const [, init] = mockFetch.mock.calls[0]!;
 		expect(init?.method).toBe("DELETE");
@@ -119,8 +123,8 @@ describe("DELETE requests", () => {
 describe("POST requests", () => {
 	test("calls fetch with POST method and stringified body", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1 }));
-		const client = createHttpClient("test-key");
-		await client.post("/v1/standups", { name: "Test" });
+		const c = testClient();
+		await c.post("/v1/standups", { name: "Test" });
 
 		const [, init] = mockFetch.mock.calls[0]!;
 		expect(init?.method).toBe("POST");
@@ -129,8 +133,8 @@ describe("POST requests", () => {
 
 	test("returns parsed JSON on success", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 99 }));
-		const client = createHttpClient("test-key");
-		const result = await client.post<{ id: number }>("/v1/standups", {
+		const c = testClient();
+		const result = await c.post<{ id: number }>("/v1/standups", {
 			name: "New",
 		});
 		expect(result).toEqual({ id: 99 });
@@ -140,8 +144,8 @@ describe("POST requests", () => {
 describe("PATCH requests", () => {
 	test("calls fetch with PATCH method and stringified body", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Updated" }));
-		const client = createHttpClient("test-key");
-		await client.patch("/v1/standups/42", { name: "Updated" });
+		const c = testClient();
+		await c.patch("/v1/standups/42", { name: "Updated" });
 
 		const [, init] = mockFetch.mock.calls[0]!;
 		expect(init?.method).toBe("PATCH");
@@ -150,8 +154,8 @@ describe("PATCH requests", () => {
 
 	test("returns parsed JSON on success", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Patched" }));
-		const client = createHttpClient("test-key");
-		const result = await client.patch<{ id: number; name: string }>("/v1/standups/42", {
+		const c = testClient();
+		const result = await c.patch<{ id: number; name: string }>("/v1/standups/42", {
 			name: "Patched",
 		});
 		expect(result).toEqual({ id: 42, name: "Patched" });
@@ -161,8 +165,8 @@ describe("PATCH requests", () => {
 describe("PUT requests", () => {
 	test("calls fetch with PUT method and stringified body", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Replaced" }));
-		const client = createHttpClient("test-key");
-		await client.put("/v1/standups/42", { name: "Replaced", channel: "#new" });
+		const c = testClient();
+		await c.put("/v1/standups/42", { name: "Replaced", channel: "#new" });
 
 		const [, init] = mockFetch.mock.calls[0]!;
 		expect(init?.method).toBe("PUT");
@@ -171,8 +175,8 @@ describe("PUT requests", () => {
 
 	test("returns parsed JSON on success", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Replaced" }));
-		const client = createHttpClient("test-key");
-		const result = await client.put<{ id: number; name: string }>("/v1/standups/42", {
+		const c = testClient();
+		const result = await c.put<{ id: number; name: string }>("/v1/standups/42", {
 			name: "Replaced",
 		});
 		expect(result).toEqual({ id: 42, name: "Replaced" });
@@ -182,9 +186,9 @@ describe("PUT requests", () => {
 describe("error handling", () => {
 	test("401 throws CliError with code 'unauthorized' and exitCode 4", async () => {
 		mockFetch.mockResolvedValueOnce(errorResponse("Unauthorized", 401));
-		const client = createHttpClient("bad-key");
+		const c = testClient("bad-key");
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
@@ -196,9 +200,9 @@ describe("error handling", () => {
 
 	test("404 throws CliError with code 'not_found' and exitCode 3", async () => {
 		mockFetch.mockResolvedValueOnce(errorResponse("Not found", 404));
-		const client = createHttpClient("test-key");
+		const c = testClient();
 		try {
-			await client.get("/v1/standups/999");
+			await c.get("/v1/standups/999");
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
@@ -210,9 +214,9 @@ describe("error handling", () => {
 
 	test("400 throws CliError with code 'validation_error' and exitCode 6", async () => {
 		mockFetch.mockResolvedValueOnce(errorResponse("Bad request", 400));
-		const client = createHttpClient("test-key");
+		const c = testClient();
 		try {
-			await client.post("/v1/standups", {});
+			await c.post("/v1/standups", {});
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
@@ -230,8 +234,8 @@ describe("retry logic", () => {
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
-		const client = createHttpClient("test-key");
-		const result = await client.get<{ id: number }>("/v1/standups");
+		const c = testClient();
+		const result = await c.get<{ id: number }>("/v1/standups");
 
 		expect(result).toEqual({ id: 1 });
 		expect(mockFetch).toHaveBeenCalledTimes(3);
@@ -242,8 +246,8 @@ describe("retry logic", () => {
 			.mockResolvedValueOnce(errorResponse("Server error", 500))
 			.mockResolvedValueOnce(jsonResponse({ ok: true }));
 
-		const client = createHttpClient("test-key");
-		const result = await client.get<{ ok: boolean }>("/v1/standups");
+		const c = testClient();
+		const result = await c.get<{ ok: boolean }>("/v1/standups");
 
 		expect(result).toEqual({ ok: true });
 		expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -251,10 +255,10 @@ describe("retry logic", () => {
 
 	test("does NOT retry 401 -- throws immediately", async () => {
 		mockFetch.mockResolvedValueOnce(errorResponse("Unauthorized", 401));
-		const client = createHttpClient("test-key");
+		const c = testClient();
 
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
@@ -269,9 +273,9 @@ describe("retry logic", () => {
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429));
 
-		const client = createHttpClient("test-key");
+		const c = testClient();
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
@@ -291,9 +295,9 @@ describe("network errors", () => {
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"));
 
-		const client = createHttpClient("test-key");
+		const c = testClient();
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
@@ -310,9 +314,9 @@ describe("network errors", () => {
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"));
 
-		const client = createHttpClient("test-key");
+		const c = testClient();
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			const err = e as CliError;
@@ -327,9 +331,9 @@ describe("network errors", () => {
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"));
 
-		const client = createHttpClient("test-key");
+		const c = testClient();
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			const err = e as CliError;
@@ -341,8 +345,8 @@ describe("network errors", () => {
 describe("path normalization", () => {
 	test("strips trailing slash from path", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse([]));
-		const client = createHttpClient("test-key");
-		await client.get("/v1/standups/");
+		const c = testClient();
+		await c.get("/v1/standups/");
 
 		const [url] = mockFetch.mock.calls[0]!;
 		expect(String(url)).toContain("/v1/standups");
@@ -363,10 +367,10 @@ describe("debug mode", () => {
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
-		const client = createHttpClient("test-key", { debug: true });
+		const c = testClient("test-key", true);
 
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 		} finally {
 			process.stderr.write = origWrite;
 		}
@@ -388,9 +392,9 @@ describe("debug mode", () => {
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
-		const client = createHttpClient("test-key", { debug: true });
+		const c = testClient("test-key", true);
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 		} finally {
 			process.stderr.write = origWrite;
 		}
@@ -410,9 +414,9 @@ describe("debug mode", () => {
 
 		mockFetch.mockResolvedValueOnce(errorResponse("Bad request", 400));
 
-		const client = createHttpClient("test-key", { debug: true });
+		const c = testClient("test-key", true);
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 		} catch {
 			/* expected */
 		} finally {
@@ -436,10 +440,10 @@ describe("debug mode", () => {
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
 		const secretKey = "super-secret-api-key-12345";
-		const client = createHttpClient(secretKey, { debug: true });
+		const c = testClient(secretKey, true);
 
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 		} finally {
 			process.stderr.write = origWrite;
 		}
@@ -457,9 +461,9 @@ describe("debug mode", () => {
 			.mockRejectedValueOnce("string error")
 			.mockRejectedValueOnce("string error");
 
-		const client = createHttpClient("test-key");
+		const c = testClient();
 		try {
-			await client.get("/v1/standups");
+			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);

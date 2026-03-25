@@ -14,8 +14,12 @@ export interface HttpClient {
 	delete(path: string): Promise<null>;
 }
 
-export function createHttpClient(apiKey: string, options?: { debug?: boolean }): HttpClient {
+export function createHttpClient(
+	apiKey: string,
+	options?: { debug?: boolean; fetch?: typeof globalThis.fetch },
+): HttpClient {
 	const debug = options?.debug ?? false;
+	const _fetch = options?.fetch ?? globalThis.fetch;
 
 	async function request<T>(
 		method: string,
@@ -46,7 +50,7 @@ export function createHttpClient(apiKey: string, options?: { debug?: boolean }):
 					process.stderr.write(`[debug] Retry attempt ${attempt} for ${method} ${cleanPath}\n`);
 				}
 
-				const response = await fetch(url, {
+				const response = await _fetch(url, {
 					method,
 					headers: {
 						// Geekbot API expects raw token, NOT "Bearer <token>"
