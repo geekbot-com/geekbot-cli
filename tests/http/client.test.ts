@@ -3,13 +3,45 @@ import { CliError } from "../../src/errors/cli-error.ts";
 import { createHttpClient } from "../../src/http/client.ts";
 import { APP_VERSION } from "../../src/utils/constants.ts";
 
-const mockFetch = mock<typeof fetch>();
+// ── Hand-written fetch spy (Bun's mock() doesn't track calls reliably on all platforms) ──
+
+type FetchArgs = [string | URL | Request, RequestInit | undefined];
+
+function createFetchSpy() {
+	const calls: FetchArgs[] = [];
+	const queue: (() => Promise<Response>)[] = [];
+
+	const fn = (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+		calls.push([input, init]);
+		const next = queue.shift();
+		if (!next) return Promise.resolve(new Response());
+		return next();
+	};
+
+	return {
+		fn: fn as typeof globalThis.fetch,
+		calls,
+		mockResolvedValueOnce(v: Response) {
+			queue.push(() => Promise.resolve(v));
+			return this;
+		},
+		mockRejectedValueOnce(v: unknown) {
+			queue.push(() => Promise.reject(v));
+			return this;
+		},
+		reset() {
+			calls.length = 0;
+			queue.length = 0;
+		},
+	};
+}
+
+const spy = createFetchSpy();
 
 const originalSleep = Bun.sleep;
 
 beforeEach(() => {
-	mockFetch.mockReset();
-	// Mock Bun.sleep to avoid real delays during retry tests
+	spy.reset();
 	(Bun as { sleep: typeof Bun.sleep }).sleep = mock(() => Promise.resolve()) as typeof Bun.sleep;
 });
 
@@ -17,9 +49,8 @@ afterAll(() => {
 	(Bun as { sleep: typeof Bun.sleep }).sleep = originalSleep;
 });
 
-/** Helper: create client with injected mock fetch */
-function testClient(apiKey = "test-key", debug = false) {
-	return createHttpClient(apiKey, { debug, fetch: mockFetch });
+function client(apiKey = "test-key", debug = false) {
+	return createHttpClient(apiKey, { debug, fetch: spy.fn });
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -63,12 +94,12 @@ describe("createHttpClient", () => {
 
 describe("GET requests", () => {
 	test("calls fetch with correct method and headers", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1 }));
-		const c = testClient("my-api-key");
+		spy.mockResolvedValueOnce(jsonResponse({ id: 1 }));
+		const c = client("my-api-key");
 		await c.get("/v1/standups");
 
-		expect(mockFetch).toHaveBeenCalledTimes(1);
-		const [url, init] = mockFetch.mock.calls[0]!;
+		expect(spy.calls).toHaveLength(1);
+		const [url, init] = spy.calls[0]!;
 		expect(url).toContain("/v1/standups");
 		expect(init?.method).toBe("GET");
 		expect(init?.headers).toEqual({
@@ -79,24 +110,24 @@ describe("GET requests", () => {
 	});
 
 	test("appends query params to URL", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse([]));
-		const c = testClient();
+		spy.mockResolvedValueOnce(jsonResponse([]));
+		const c = client();
 		await c.get("/v1/standups", { user_id: "5" });
 
-		const [url] = mockFetch.mock.calls[0]!;
+		const [url] = spy.calls[0]!;
 		expect(String(url)).toContain("?user_id=5");
 	});
 
 	test("returns parsed JSON body on success", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Daily" }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Daily" }));
+		const c = client();
 		const result = await c.get<{ id: number; name: string }>("/v1/standups");
 		expect(result).toEqual({ id: 42, name: "Daily" });
 	});
 
 	test("returns null for 204 No Content", async () => {
-		mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(new Response(null, { status: 204 }));
+		const c = client();
 		const result = await c.get("/v1/standups/1");
 		expect(result).toBeNull();
 	});
@@ -104,57 +135,55 @@ describe("GET requests", () => {
 
 describe("DELETE requests", () => {
 	test("delete method returns null for 204 response", async () => {
-		mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(new Response(null, { status: 204 }));
+		const c = client();
 		const result = await c.delete("/v1/standups/42");
 		expect(result).toBeNull();
 	});
 
 	test("delete calls fetch with DELETE method", async () => {
-		mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(new Response(null, { status: 204 }));
+		const c = client();
 		await c.delete("/v1/standups/42");
 
-		const [, init] = mockFetch.mock.calls[0]!;
+		const [, init] = spy.calls[0]!;
 		expect(init?.method).toBe("DELETE");
 	});
 });
 
 describe("POST requests", () => {
 	test("calls fetch with POST method and stringified body", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1 }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(jsonResponse({ id: 1 }));
+		const c = client();
 		await c.post("/v1/standups", { name: "Test" });
 
-		const [, init] = mockFetch.mock.calls[0]!;
+		const [, init] = spy.calls[0]!;
 		expect(init?.method).toBe("POST");
 		expect(init?.body).toBe(JSON.stringify({ name: "Test" }));
 	});
 
 	test("returns parsed JSON on success", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 99 }));
-		const c = testClient();
-		const result = await c.post<{ id: number }>("/v1/standups", {
-			name: "New",
-		});
+		spy.mockResolvedValueOnce(jsonResponse({ id: 99 }));
+		const c = client();
+		const result = await c.post<{ id: number }>("/v1/standups", { name: "New" });
 		expect(result).toEqual({ id: 99 });
 	});
 });
 
 describe("PATCH requests", () => {
 	test("calls fetch with PATCH method and stringified body", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Updated" }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Updated" }));
+		const c = client();
 		await c.patch("/v1/standups/42", { name: "Updated" });
 
-		const [, init] = mockFetch.mock.calls[0]!;
+		const [, init] = spy.calls[0]!;
 		expect(init?.method).toBe("PATCH");
 		expect(init?.body).toBe(JSON.stringify({ name: "Updated" }));
 	});
 
 	test("returns parsed JSON on success", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Patched" }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Patched" }));
+		const c = client();
 		const result = await c.patch<{ id: number; name: string }>("/v1/standups/42", {
 			name: "Patched",
 		});
@@ -164,18 +193,18 @@ describe("PATCH requests", () => {
 
 describe("PUT requests", () => {
 	test("calls fetch with PUT method and stringified body", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Replaced" }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Replaced" }));
+		const c = client();
 		await c.put("/v1/standups/42", { name: "Replaced", channel: "#new" });
 
-		const [, init] = mockFetch.mock.calls[0]!;
+		const [, init] = spy.calls[0]!;
 		expect(init?.method).toBe("PUT");
 		expect(init?.body).toBe(JSON.stringify({ name: "Replaced", channel: "#new" }));
 	});
 
 	test("returns parsed JSON on success", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Replaced" }));
-		const c = testClient();
+		spy.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Replaced" }));
+		const c = client();
 		const result = await c.put<{ id: number; name: string }>("/v1/standups/42", {
 			name: "Replaced",
 		});
@@ -185,8 +214,8 @@ describe("PUT requests", () => {
 
 describe("error handling", () => {
 	test("401 throws CliError with code 'unauthorized' and exitCode 4", async () => {
-		mockFetch.mockResolvedValueOnce(errorResponse("Unauthorized", 401));
-		const c = testClient("bad-key");
+		spy.mockResolvedValueOnce(errorResponse("Unauthorized", 401));
+		const c = client("bad-key");
 		try {
 			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
@@ -199,8 +228,8 @@ describe("error handling", () => {
 	});
 
 	test("404 throws CliError with code 'not_found' and exitCode 3", async () => {
-		mockFetch.mockResolvedValueOnce(errorResponse("Not found", 404));
-		const c = testClient();
+		spy.mockResolvedValueOnce(errorResponse("Not found", 404));
+		const c = client();
 		try {
 			await c.get("/v1/standups/999");
 			expect.unreachable("should have thrown");
@@ -213,8 +242,8 @@ describe("error handling", () => {
 	});
 
 	test("400 throws CliError with code 'validation_error' and exitCode 6", async () => {
-		mockFetch.mockResolvedValueOnce(errorResponse("Bad request", 400));
-		const c = testClient();
+		spy.mockResolvedValueOnce(errorResponse("Bad request", 400));
+		const c = client();
 		try {
 			await c.post("/v1/standups", {});
 			expect.unreachable("should have thrown");
@@ -229,33 +258,33 @@ describe("error handling", () => {
 
 describe("retry logic", () => {
 	test("retries 429 then succeeds", async () => {
-		mockFetch
+		spy
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
-		const c = testClient();
+		const c = client();
 		const result = await c.get<{ id: number }>("/v1/standups");
 
 		expect(result).toEqual({ id: 1 });
-		expect(mockFetch).toHaveBeenCalledTimes(3);
+		expect(spy.calls).toHaveLength(3);
 	});
 
 	test("retries 500 then succeeds", async () => {
-		mockFetch
+		spy
 			.mockResolvedValueOnce(errorResponse("Server error", 500))
 			.mockResolvedValueOnce(jsonResponse({ ok: true }));
 
-		const c = testClient();
+		const c = client();
 		const result = await c.get<{ ok: boolean }>("/v1/standups");
 
 		expect(result).toEqual({ ok: true });
-		expect(mockFetch).toHaveBeenCalledTimes(2);
+		expect(spy.calls).toHaveLength(2);
 	});
 
 	test("does NOT retry 401 -- throws immediately", async () => {
-		mockFetch.mockResolvedValueOnce(errorResponse("Unauthorized", 401));
-		const c = testClient();
+		spy.mockResolvedValueOnce(errorResponse("Unauthorized", 401));
+		const c = client();
 
 		try {
 			await c.get("/v1/standups");
@@ -263,17 +292,17 @@ describe("retry logic", () => {
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
 		}
-		expect(mockFetch).toHaveBeenCalledTimes(1);
+		expect(spy.calls).toHaveLength(1);
 	});
 
 	test("exhausts retries on persistent 429 and throws", async () => {
-		mockFetch
+		spy
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429));
 
-		const c = testClient();
+		const c = client();
 		try {
 			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
@@ -282,20 +311,19 @@ describe("retry logic", () => {
 			const err = e as CliError;
 			expect(err.code).toBe("rate_limited");
 		}
-		// 1 initial + 3 retries = 4 calls
-		expect(mockFetch).toHaveBeenCalledTimes(4);
+		expect(spy.calls).toHaveLength(4);
 	});
 });
 
 describe("network errors", () => {
 	test("throws CliError with code 'network_error' after retries exhausted", async () => {
-		mockFetch
+		spy
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"));
 
-		const c = testClient();
+		const c = client();
 		try {
 			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
@@ -308,13 +336,13 @@ describe("network errors", () => {
 	});
 
 	test("network error is retryable", async () => {
-		mockFetch
+		spy
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"));
 
-		const c = testClient();
+		const c = client();
 		try {
 			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
@@ -325,13 +353,13 @@ describe("network errors", () => {
 	});
 
 	test("network error message contains original error", async () => {
-		mockFetch
+		spy
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockRejectedValueOnce(new Error("Connection refused"));
 
-		const c = testClient();
+		const c = client();
 		try {
 			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");
@@ -344,11 +372,11 @@ describe("network errors", () => {
 
 describe("path normalization", () => {
 	test("strips trailing slash from path", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse([]));
-		const c = testClient();
+		spy.mockResolvedValueOnce(jsonResponse([]));
+		const c = client();
 		await c.get("/v1/standups/");
 
-		const [url] = mockFetch.mock.calls[0]!;
+		const [url] = spy.calls[0]!;
 		expect(String(url)).toContain("/v1/standups");
 		expect(String(url)).not.toContain("/v1/standups/");
 	});
@@ -363,11 +391,11 @@ describe("debug mode", () => {
 			return true;
 		}) as typeof process.stderr.write;
 
-		mockFetch
+		spy
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
-		const c = testClient("test-key", true);
+		const c = client("test-key", true);
 
 		try {
 			await c.get("/v1/standups");
@@ -388,11 +416,11 @@ describe("debug mode", () => {
 			return true;
 		}) as typeof process.stderr.write;
 
-		mockFetch
+		spy
 			.mockRejectedValueOnce(new Error("Connection refused"))
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
-		const c = testClient("test-key", true);
+		const c = client("test-key", true);
 		try {
 			await c.get("/v1/standups");
 		} finally {
@@ -412,9 +440,9 @@ describe("debug mode", () => {
 			return true;
 		}) as typeof process.stderr.write;
 
-		mockFetch.mockResolvedValueOnce(errorResponse("Bad request", 400));
+		spy.mockResolvedValueOnce(errorResponse("Bad request", 400));
 
-		const c = testClient("test-key", true);
+		const c = client("test-key", true);
 		try {
 			await c.get("/v1/standups");
 		} catch {
@@ -435,12 +463,12 @@ describe("debug mode", () => {
 			return true;
 		}) as typeof process.stderr.write;
 
-		mockFetch
+		spy
 			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
 		const secretKey = "super-secret-api-key-12345";
-		const c = testClient(secretKey, true);
+		const c = client(secretKey, true);
 
 		try {
 			await c.get("/v1/standups");
@@ -450,18 +478,17 @@ describe("debug mode", () => {
 
 		const allOutput = stderrMessages.join("");
 		expect(allOutput).not.toContain(secretKey);
-		// Verify debug output was actually produced
 		expect(allOutput).toContain("[debug]");
 	});
 
 	test("handles non-Error network failures", async () => {
-		mockFetch
+		spy
 			.mockRejectedValueOnce("string error")
 			.mockRejectedValueOnce("string error")
 			.mockRejectedValueOnce("string error")
 			.mockRejectedValueOnce("string error");
 
-		const c = testClient();
+		const c = client();
 		try {
 			await c.get("/v1/standups");
 			expect.unreachable("should have thrown");

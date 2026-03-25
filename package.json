@@ -16,6 +16,7 @@
 		"scripts/"
 	],
 	"scripts": {
+		"postinstall": "node scripts/postinstall.mjs",
 		"dev": "bun run src/cli/index.ts",
 		"test": "bun test",
 		"test:integration": "bun test tests/integration/",
