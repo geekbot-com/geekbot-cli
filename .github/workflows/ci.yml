@@ -12,12 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-v2-
-      - run: bun install
+          no-cache: true
+      - run: bun install --no-cache
       - run: bun run lint
 
   typecheck:
@@ -25,12 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-v2-
-      - run: bun install
+          no-cache: true
+      - run: bun install --no-cache
       - run: bunx tsc --noEmit
 
   test:
@@ -43,12 +37,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-v2-
-      - run: bun install
+          no-cache: true
+      - run: bun install --no-cache
       - run: bun test
 
   coverage:
@@ -57,12 +48,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-v2-
-      - run: bun install
+          no-cache: true
+      - run: bun install --no-cache
       - name: Run tests with coverage
         run: bun test --coverage 2>&1 | tee coverage-output.txt
       - name: Enforce 95% line coverage threshold
@@ -86,12 +74,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-v2-
-      - run: bun install
+          no-cache: true
+      - run: bun install --no-cache
       - name: Check integration test secret
         run: |
           if [ -z "$GEEKBOT_INTEGRATION_TEST_API_KEY" ]; then
