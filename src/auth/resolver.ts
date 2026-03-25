@@ -1,6 +1,6 @@
 import { CliError } from "../errors/cli-error.ts";
 import { ExitCode } from "../errors/exit-codes.ts";
-import { getKeychainKey } from "./keychain.ts";
+import { getKeychainKey as _getKeychainKey } from "./keychain.ts";
 
 export interface CredentialResult {
 	apiKey: string;
@@ -9,6 +9,7 @@ export interface CredentialResult {
 
 export async function resolveCredential(options: {
 	apiKeyFlag?: string;
+	getKeychainKey?: typeof _getKeychainKey;
 }): Promise<CredentialResult> {
 	// Priority 1: --api-key flag
 	if (options.apiKeyFlag) {
@@ -22,8 +23,9 @@ export async function resolveCredential(options: {
 	}
 
 	// Priority 3: OS keychain
+	const getKey = options.getKeychainKey ?? _getKeychainKey;
 	try {
-		const keychainKey = getKeychainKey();
+		const keychainKey = getKey();
 		if (keychainKey) {
 			return { apiKey: keychainKey, source: "keychain" };
 		}
