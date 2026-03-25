@@ -160,13 +160,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			expect(updateEnvelope.ok).toBe(true);
 
 			// Verify questions were actually changed
-			const getResult = await runCli([
-				"standup",
-				"get",
-				String(standupId),
-				"--api-key",
-				API_KEY!,
-			]);
+			const getResult = await runCli(["standup", "get", String(standupId), "--api-key", API_KEY!]);
 
 			expect(getResult.exitCode).toBe(0);
 			const getEnvelope = JSON.parse(getResult.stdout);
@@ -215,13 +209,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 		expect(deleteEnvelope.ok).toBe(true);
 
 		// Verify it's gone
-		const getResult = await runCli([
-			"standup",
-			"get",
-			String(standupId),
-			"--api-key",
-			API_KEY!,
-		]);
+		const getResult = await runCli(["standup", "get", String(standupId), "--api-key", API_KEY!]);
 
 		expect(getResult.exitCode).toBe(3); // NOT_FOUND
 	}, 30000);

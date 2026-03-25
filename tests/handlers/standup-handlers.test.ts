@@ -766,11 +766,7 @@ describe("handleStandupReplace", () => {
 
 	test("throws CliError for invalid user IDs", async () => {
 		try {
-			await handleStandupReplace(
-				"42",
-				{ name: "R", channel: "#c", users: "bad,ids" },
-				GLOBAL_OPTS,
-			);
+			await handleStandupReplace("42", { name: "R", channel: "#c", users: "bad,ids" }, GLOBAL_OPTS);
 			expect.unreachable("should have thrown");
 		} catch (err) {
 			expect(err).toBeInstanceOf(CliError);

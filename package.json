@@ -27,7 +27,13 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"keywords": ["geekbot", "standup", "cli", "ai-agent", "skill"],
+	"keywords": [
+		"geekbot",
+		"standup",
+		"cli",
+		"ai-agent",
+		"skill"
+	],
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.7",
 		"@types/bun": "latest"

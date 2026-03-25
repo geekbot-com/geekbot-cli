@@ -268,9 +268,7 @@ describe("handleReportList", () => {
 					question: "What did you do?",
 					answer: "Built feature X",
 					answer_type: "text",
-					images: [
-						{ title: "screenshot", image_url: "https://example.com/img.png" },
-					],
+					images: [{ title: "screenshot", image_url: "https://example.com/img.png" }],
 					color: "",
 				},
 			],

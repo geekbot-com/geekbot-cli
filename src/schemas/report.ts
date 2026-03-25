@@ -8,10 +8,15 @@ const ReportAnswerSchema = z.object({
 	question_id: z.number().optional(),
 	answer: z.string(),
 	answer_type: z.string().optional().default("text"),
-	images: z.array(z.object({
-		title: z.string(),
-		image_url: z.string(),
-	})).optional().default([]),
+	images: z
+		.array(
+			z.object({
+				title: z.string(),
+				image_url: z.string(),
+			}),
+		)
+		.optional()
+		.default([]),
 	color: z.string().optional().default(""),
 });
 

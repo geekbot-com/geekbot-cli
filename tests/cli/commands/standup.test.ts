@@ -142,10 +142,9 @@ describe("createStandupCommand", () => {
 		const program = new Command();
 		addGlobalOptions(program);
 		program.addCommand(createStandupCommand());
-		await program.parseAsync(
-			["standup", "list", "--member", "UHNM44125", "--api-key", "test"],
-			{ from: "user" },
-		);
+		await program.parseAsync(["standup", "list", "--member", "UHNM44125", "--api-key", "test"], {
+			from: "user",
+		});
 		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
 			expect.objectContaining({ member: "UHNM44125" }),
 			expect.anything(),
@@ -157,11 +156,29 @@ describe("createStandupCommand", () => {
 		addGlobalOptions(program);
 		program.addCommand(createStandupCommand());
 		await program.parseAsync(
-			["standup", "list", "--admin", "--brief", "--name", "daily", "--mine", "--member", "U123", "--api-key", "test"],
+			[
+				"standup",
+				"list",
+				"--admin",
+				"--brief",
+				"--name",
+				"daily",
+				"--mine",
+				"--member",
+				"U123",
+				"--api-key",
+				"test",
+			],
 			{ from: "user" },
 		);
 		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ admin: true, brief: true, name: "daily", mine: true, member: "U123" }),
+			expect.objectContaining({
+				admin: true,
+				brief: true,
+				name: "daily",
+				mine: true,
+				member: "U123",
+			}),
 			expect.anything(),
 		);
 	});
