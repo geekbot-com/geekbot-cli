@@ -53,6 +53,18 @@ function client(apiKey = "test-key", debug = false) {
 	return createHttpClient(apiKey, { debug, fetch: spy.fn });
 }
 
+// Diagnostic: verify DI works at the most basic level
+test("DI sanity check: injected fetch gets called", async () => {
+	let called = false;
+	const fakeFetch = (() => {
+		called = true;
+		return Promise.resolve(new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } }));
+	}) as typeof globalThis.fetch;
+	const c = createHttpClient("key", { debug: false, fetch: fakeFetch });
+	await c.get("/test");
+	expect(called).toBe(true);
+});
+
 function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
 		status,
