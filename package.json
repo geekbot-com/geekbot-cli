@@ -10,7 +10,13 @@
 	"bin": {
 		"geekbot": "./src/cli/index.ts"
 	},
+	"files": [
+		"src/",
+		"skills/",
+		"scripts/"
+	],
 	"scripts": {
+		"postinstall": "node scripts/postinstall.mjs",
 		"dev": "bun run src/cli/index.ts",
 		"test": "bun test",
 		"test:integration": "bun test tests/integration/",
@@ -18,6 +24,10 @@
 		"format": "bunx biome format --write .",
 		"check": "bunx biome check --write ."
 	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": ["geekbot", "standup", "cli", "ai-agent", "skill"],
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.7",
 		"@types/bun": "latest"

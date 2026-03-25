@@ -8,7 +8,7 @@ set -euo pipefail
 # Check CLI exists on PATH
 if ! command -v geekbot &>/dev/null; then
   cat <<'EOF'
-{"ok":false,"error":"cli_not_found","message":"geekbot CLI not found on PATH.","suggestion":"Install: ensure Bun >= 1.0 is installed, then: git clone https://github.com/geekbot-com/geekbot-cli.git && cd geekbot-cli && bun install && bun link"}
+{"ok":false,"error":"cli_not_found","message":"geekbot CLI not found on PATH.","suggestion":"Install: npm install -g geekbot-cli (requires Bun >= 1.0). Or use npx geekbot-cli for one-off commands."}
 EOF
   exit 1
 fi

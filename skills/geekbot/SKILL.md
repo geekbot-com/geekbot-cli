@@ -28,8 +28,9 @@ Before any operation, verify the CLI is available and authenticated.
 
 Run `check-cli.sh` on first invocation. If it fails:
 
-- **CLI not found**: The user needs Bun ≥ 1.0 installed, then:
-  `git clone https://github.com/geekbot-com/geekbot-cli.git && cd geekbot-cli && bun install && bun link`
+- **CLI not found**: Install via `npm install -g geekbot-cli` (requires
+  Bun >= 1.0 runtime). Alternatively, use `npx geekbot-cli` for one-off
+  commands without global install.
 - **Auth not configured**: Guide the user to run `geekbot auth setup`
   which stores the API key in the OS keychain. Alternatively they can
   set `GEEKBOT_API_KEY` as an environment variable.
