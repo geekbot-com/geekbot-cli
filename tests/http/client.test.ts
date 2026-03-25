@@ -58,7 +58,9 @@ test("DI sanity check: injected fetch gets called", async () => {
 	let called = false;
 	const fakeFetch = (() => {
 		called = true;
-		return Promise.resolve(new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } }));
+		return Promise.resolve(
+			new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } }),
+		);
 	}) as typeof globalThis.fetch;
 	const c = createHttpClient("key", { debug: false, fetch: fakeFetch });
 	await c.get("/test");
