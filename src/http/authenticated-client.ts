@@ -1,4 +1,4 @@
-import { resolveCredential } from "../auth/resolver.ts";
+import { resolveCredential as _resolveCredential } from "../auth/resolver.ts";
 import type { GlobalOptions } from "../cli/globals.ts";
 import { createHttpClient, type HttpClient } from "./client.ts";
 
@@ -7,7 +7,11 @@ import { createHttpClient, type HttpClient } from "./client.ts";
  * Extracts the repeated resolveCredential + createHttpClient pattern
  * used across all handler modules.
  */
-export async function createAuthenticatedClient(globalOpts: GlobalOptions): Promise<HttpClient> {
-	const { apiKey } = await resolveCredential({ apiKeyFlag: globalOpts.apiKey });
+export async function createAuthenticatedClient(
+	globalOpts: GlobalOptions,
+	deps?: { resolveCredential?: typeof _resolveCredential },
+): Promise<HttpClient> {
+	const resolve = deps?.resolveCredential ?? _resolveCredential;
+	const { apiKey } = await resolve({ apiKeyFlag: globalOpts.apiKey });
 	return createHttpClient(apiKey, { debug: globalOpts.debug });
 }
