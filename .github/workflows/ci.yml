@@ -10,7 +10,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     container:
-      image: oven/bun:1
+      image: oven/bun:1.3.11
     steps:
       - uses: actions/checkout@v4
       - run: bun install
@@ -19,7 +19,7 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     container:
-      image: oven/bun:1
+      image: oven/bun:1.3.11
     steps:
       - uses: actions/checkout@v4
       - run: bun install
@@ -29,10 +29,12 @@ jobs:
     needs: [lint, typecheck]
     runs-on: ubuntu-latest
     container:
-      image: oven/bun:1
+      image: oven/bun:1.3.11
     steps:
       - uses: actions/checkout@v4
       - run: bun install
+      - name: Debug Bun info
+        run: bun --revision && uname -a
       - run: bun test
 
   test-macos:
@@ -46,11 +48,10 @@ jobs:
 
   coverage:
     needs: [lint, typecheck]
-    runs-on: ubuntu-latest
-    container:
-      image: oven/bun:1
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: Run tests with coverage
         run: bun test --coverage 2>&1 | tee coverage-output.txt
@@ -72,7 +73,7 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     container:
-      image: oven/bun:1
+      image: oven/bun:1.3.11
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
