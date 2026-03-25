@@ -9,48 +9,49 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    container:
+      image: oven/bun:1
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          no-cache: true
-      - run: bun install --no-cache
+      - run: bun install
       - run: bun run lint
 
   typecheck:
     runs-on: ubuntu-latest
+    container:
+      image: oven/bun:1
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          no-cache: true
-      - run: bun install --no-cache
+      - run: bun install
       - run: bunx tsc --noEmit
 
-  test:
+  test-linux:
     needs: [lint, typecheck]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    container:
+      image: oven/bun:1
+    steps:
+      - uses: actions/checkout@v4
+      - run: bun install
+      - run: bun test
+
+  test-macos:
+    needs: [lint, typecheck]
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-        with:
-          no-cache: true
-      - run: bun install --no-cache
+      - run: bun install
       - run: bun test
 
   coverage:
     needs: [lint, typecheck]
     runs-on: ubuntu-latest
+    container:
+      image: oven/bun:1
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          no-cache: true
-      - run: bun install --no-cache
+      - run: bun install
       - name: Run tests with coverage
         run: bun test --coverage 2>&1 | tee coverage-output.txt
       - name: Enforce 95% line coverage threshold
@@ -70,13 +71,12 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
+    container:
+      image: oven/bun:1
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          no-cache: true
-      - run: bun install --no-cache
+      - run: bun install
       - name: Check integration test secret
         run: |
           if [ -z "$GEEKBOT_INTEGRATION_TEST_API_KEY" ]; then
