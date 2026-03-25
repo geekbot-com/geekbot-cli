@@ -15,8 +15,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
+          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-v2-
       - run: bun install
       - run: bun run lint
 
@@ -28,8 +28,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
+          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-v2-
       - run: bun install
       - run: bunx tsc --noEmit
 
@@ -46,8 +46,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
+          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-v2-
       - run: bun install
       - run: bun test
 
@@ -60,8 +60,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
+          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-v2-
       - run: bun install
       - name: Run tests with coverage
         run: bun test --coverage 2>&1 | tee coverage-output.txt
@@ -89,8 +89,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
+          key: ${{ runner.os }}-bun-v2-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-v2-
       - run: bun install
       - name: Check integration test secret
         run: |
