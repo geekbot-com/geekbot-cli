@@ -21,27 +21,31 @@ describe("resolveCredential", () => {
 	});
 
 	test("returns flag source when --api-key is provided", async () => {
-		const result = await resolveCredential({
-			apiKeyFlag: "flag-key",
-			getKeychainKey: mockGetKeychainKey,
-		});
+		const result = await resolveCredential(
+			{
+				apiKeyFlag: "flag-key",
+			},
+			mockGetKeychainKey,
+		);
 		expect(result.apiKey).toBe("flag-key");
 		expect(result.source).toBe("flag");
 	});
 
 	test("flag takes priority over env var", async () => {
 		process.env.GEEKBOT_API_KEY = "env-key";
-		const result = await resolveCredential({
-			apiKeyFlag: "flag-key",
-			getKeychainKey: mockGetKeychainKey,
-		});
+		const result = await resolveCredential(
+			{
+				apiKeyFlag: "flag-key",
+			},
+			mockGetKeychainKey,
+		);
 		expect(result.source).toBe("flag");
 		expect(result.apiKey).toBe("flag-key");
 	});
 
 	test("returns env source when GEEKBOT_API_KEY is set and no flag", async () => {
 		process.env.GEEKBOT_API_KEY = "env-key";
-		const result = await resolveCredential({ getKeychainKey: mockGetKeychainKey });
+		const result = await resolveCredential({}, mockGetKeychainKey);
 		expect(result.apiKey).toBe("env-key");
 		expect(result.source).toBe("env");
 	});
@@ -49,7 +53,7 @@ describe("resolveCredential", () => {
 	test("returns keychain source when no flag or env var but keychain has key", async () => {
 		delete process.env.GEEKBOT_API_KEY;
 		mockGetKeychainKey.mockReturnValue("keychain-key");
-		const result = await resolveCredential({ getKeychainKey: mockGetKeychainKey });
+		const result = await resolveCredential({}, mockGetKeychainKey);
 		expect(result.apiKey).toBe("keychain-key");
 		expect(result.source).toBe("keychain");
 	});
@@ -57,10 +61,12 @@ describe("resolveCredential", () => {
 	test("flag takes priority over keychain", async () => {
 		delete process.env.GEEKBOT_API_KEY;
 		mockGetKeychainKey.mockReturnValue("keychain-key");
-		const result = await resolveCredential({
-			apiKeyFlag: "flag-key",
-			getKeychainKey: mockGetKeychainKey,
-		});
+		const result = await resolveCredential(
+			{
+				apiKeyFlag: "flag-key",
+			},
+			mockGetKeychainKey,
+		);
 		expect(result.source).toBe("flag");
 		expect(result.apiKey).toBe("flag-key");
 	});
@@ -68,7 +74,7 @@ describe("resolveCredential", () => {
 	test("env takes priority over keychain", async () => {
 		process.env.GEEKBOT_API_KEY = "env-key";
 		mockGetKeychainKey.mockReturnValue("keychain-key");
-		const result = await resolveCredential({ getKeychainKey: mockGetKeychainKey });
+		const result = await resolveCredential({}, mockGetKeychainKey);
 		expect(result.source).toBe("env");
 		expect(result.apiKey).toBe("env-key");
 	});
@@ -79,7 +85,7 @@ describe("resolveCredential", () => {
 			throw new Error("keychain unavailable");
 		});
 		try {
-			await resolveCredential({ getKeychainKey: mockGetKeychainKey });
+			await resolveCredential({}, mockGetKeychainKey);
 			throw new Error("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
@@ -90,7 +96,7 @@ describe("resolveCredential", () => {
 	test("throws CliError with auth_missing when no credential found", async () => {
 		delete process.env.GEEKBOT_API_KEY;
 		try {
-			await resolveCredential({ getKeychainKey: mockGetKeychainKey });
+			await resolveCredential({}, mockGetKeychainKey);
 			throw new Error("should have thrown");
 		} catch (e) {
 			expect(e).toBeInstanceOf(CliError);
@@ -102,7 +108,7 @@ describe("resolveCredential", () => {
 	test("auth error message names all credential sources checked", async () => {
 		delete process.env.GEEKBOT_API_KEY;
 		try {
-			await resolveCredential({ getKeychainKey: mockGetKeychainKey });
+			await resolveCredential({}, mockGetKeychainKey);
 		} catch (e) {
 			expect((e as CliError).message).toContain("--api-key flag");
 			expect((e as CliError).message).toContain("GEEKBOT_API_KEY");
@@ -113,24 +119,26 @@ describe("resolveCredential", () => {
 	test("auth error suggestion mentions auth setup", async () => {
 		delete process.env.GEEKBOT_API_KEY;
 		try {
-			await resolveCredential({ getKeychainKey: mockGetKeychainKey });
+			await resolveCredential({}, mockGetKeychainKey);
 		} catch (e) {
 			expect((e as CliError).suggestion).toContain("geekbot auth setup");
 		}
 	});
 
 	test("trims whitespace from flag API key", async () => {
-		const result = await resolveCredential({
-			apiKeyFlag: "  flag-key\n",
-			getKeychainKey: mockGetKeychainKey,
-		});
+		const result = await resolveCredential(
+			{
+				apiKeyFlag: "  flag-key\n",
+			},
+			mockGetKeychainKey,
+		);
 		expect(result.apiKey).toBe("flag-key");
 		expect(result.source).toBe("flag");
 	});
 
 	test("trims whitespace from env var API key", async () => {
 		process.env.GEEKBOT_API_KEY = "  env-key\t\n";
-		const result = await resolveCredential({ getKeychainKey: mockGetKeychainKey });
+		const result = await resolveCredential({}, mockGetKeychainKey);
 		expect(result.apiKey).toBe("env-key");
 		expect(result.source).toBe("env");
 	});

@@ -7,10 +7,10 @@ export interface CredentialResult {
 	source: "flag" | "env" | "keychain";
 }
 
-export async function resolveCredential(options: {
-	apiKeyFlag?: string;
-	getKeychainKey?: typeof _getKeychainKey;
-}): Promise<CredentialResult> {
+export async function resolveCredential(
+	options: { apiKeyFlag?: string },
+	getKeychainKeyImpl?: typeof _getKeychainKey,
+): Promise<CredentialResult> {
 	// Priority 1: --api-key flag
 	if (options.apiKeyFlag) {
 		return { apiKey: options.apiKeyFlag.trim(), source: "flag" };
@@ -23,7 +23,7 @@ export async function resolveCredential(options: {
 	}
 
 	// Priority 3: OS keychain
-	const getKey = options.getKeychainKey ?? _getKeychainKey;
+	const getKey = getKeychainKeyImpl ?? _getKeychainKey;
 	try {
 		const keychainKey = getKey();
 		if (keychainKey) {
