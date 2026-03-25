@@ -1,0 +1,349 @@
+import { beforeEach, describe, expect, mock, test } from "bun:test";
+
+/**
+ * Auth handlers test suite.
+ *
+ * Strategy: mock resolveCredential, createHttpClient, keychain functions,
+ * and writeOutput to isolate handler logic.
+ */
+
+// ── Fixtures ──────────────────────────────────────────────────────────
+
+const ME_RESPONSE = {
+	user: {
+		id: "1",
+		username: "testuser",
+		realname: "Test User",
+		firstname: "Test",
+		email: "test@example.com",
+		profile_img: "https://example.com/img.png",
+		timezone: "UTC",
+		is_admin: true,
+		is_billing_admin: false,
+		role: "admin" as const,
+	},
+	team: {
+		id: 1,
+		name: "Test Team",
+	},
+};
+
+// ── Mock Setup ────────────────────────────────────────────────────────
+
+const mockGet = mock(() => Promise.resolve(ME_RESPONSE));
+const mockClient = {
+	get: mockGet,
+	post: mock(() => Promise.resolve(null)),
+	patch: mock(() => Promise.resolve(null)),
+	put: mock(() => Promise.resolve(null)),
+	delete: mock(() => Promise.resolve(null)),
+};
+
+const mockResolveCredential = mock(() =>
+	Promise.resolve({ apiKey: "test-key", source: "env" as const }),
+);
+
+mock.module("../../src/auth/resolver.ts", () => ({
+	resolveCredential: mockResolveCredential,
+}));
+
+mock.module("../../src/http/client.ts", () => ({
+	createHttpClient: mock(() => mockClient),
+}));
+
+const mockGetKeychainKey = mock(() => null as string | null);
+const mockSetKeychainKey = mock((_key: string) => {});
+const mockDeleteKeychainKey = mock(() => {});
+
+mock.module("../../src/auth/keychain.ts", () => ({
+	getKeychainKey: mockGetKeychainKey,
+	setKeychainKey: mockSetKeychainKey,
+	deleteKeychainKey: mockDeleteKeychainKey,
+}));
+
+const mockWriteOutput = mock(() => {});
+mock.module("../../src/output/formatter.ts", () => ({
+	writeOutput: mockWriteOutput,
+}));
+
+// Import handlers AFTER mocks
+const { handleAuthSetup, handleAuthStatus, handleAuthRemove } = await import(
+	"../../src/handlers/auth-handlers.ts"
+);
+const { CliError } = await import("../../src/errors/cli-error.ts");
+
+const GLOBAL_OPTS = {
+	apiKey: undefined,
+	output: "json" as const,
+	debug: false,
+};
+
+beforeEach(() => {
+	mockGet.mockReset();
+	mockGet.mockReturnValue(Promise.resolve(ME_RESPONSE));
+	mockResolveCredential.mockReset();
+	mockResolveCredential.mockReturnValue(
+		Promise.resolve({ apiKey: "test-key", source: "env" as const }),
+	);
+	mockGetKeychainKey.mockReset();
+	mockGetKeychainKey.mockReturnValue(null);
+	mockSetKeychainKey.mockReset();
+	mockDeleteKeychainKey.mockReset();
+	mockWriteOutput.mockReset();
+});
+
+// ── handleAuthSetup ──────────────────────────────────────────────────
+
+describe("handleAuthSetup", () => {
+	test("with --api-key flag: verifies key, stores in keychain, outputs success", async () => {
+		await handleAuthSetup({ apiKey: "my-api-key" }, GLOBAL_OPTS);
+
+		expect(mockGet).toHaveBeenCalledWith("/v1/me");
+		expect(mockSetKeychainKey).toHaveBeenCalledWith("my-api-key");
+		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
+
+		const envelope = mockWriteOutput.mock.calls[0][0] as {
+			ok: boolean;
+			data: { authenticated: boolean; username: string; email: string };
+		};
+		expect(envelope.ok).toBe(true);
+		expect(envelope.data.authenticated).toBe(true);
+		expect(envelope.data.username).toBe("testuser");
+		expect(envelope.data.email).toBe("test@example.com");
+	});
+
+	test("interactive TTY prompt reads API key from stdin", async () => {
+		const origIsTTY = process.stdin.isTTY;
+		Object.defineProperty(process.stdin, "isTTY", {
+			value: true,
+			configurable: true,
+		});
+
+		const mockQuestion = mock((_prompt: string, callback: (answer: string) => void) => {
+			callback("  user-entered-key  "); // with whitespace to test trim
+		});
+		const mockClose = mock(() => {});
+
+		mock.module("readline", () => ({
+			createInterface: mock(() => ({
+				question: mockQuestion,
+				close: mockClose,
+			})),
+		}));
+
+		try {
+			await handleAuthSetup({}, GLOBAL_OPTS);
+
+			// Should have used the key from readline (trimmed)
+			expect(mockSetKeychainKey).toHaveBeenCalledWith("user-entered-key");
+			expect(mockGet).toHaveBeenCalledWith("/v1/me");
+		} finally {
+			Object.defineProperty(process.stdin, "isTTY", {
+				value: origIsTTY,
+				configurable: true,
+			});
+		}
+	});
+
+	test("interactive TTY prompt does not echo the API key to output", async () => {
+		const origIsTTY = process.stdin.isTTY;
+		Object.defineProperty(process.stdin, "isTTY", {
+			value: true,
+			configurable: true,
+		});
+
+		// Track what output stream was given to createInterface
+		let capturedOutput: { write: (...args: unknown[]) => unknown } | null = null;
+		const mockQuestion = mock((_prompt: string, callback: (answer: string) => void) => {
+			callback("secret-api-key-12345");
+		});
+		const mockClose = mock(() => {});
+
+		mock.module("readline", () => ({
+			createInterface: mock((opts: { output: { write: (...args: unknown[]) => unknown } }) => {
+				capturedOutput = opts.output;
+				return {
+					question: mockQuestion,
+					close: mockClose,
+				};
+			}),
+		}));
+
+		// Capture everything written to stderr during the call
+		const stderrWrites: string[] = [];
+		const origStderrWrite = process.stderr.write;
+		process.stderr.write = mock((...args: unknown[]) => {
+			stderrWrites.push(String(args[0]));
+			return true;
+		}) as unknown as typeof process.stderr.write;
+
+		try {
+			await handleAuthSetup({}, GLOBAL_OPTS);
+
+			// The readline output stream should NOT be process.stderr or process.stdout.
+			// It should be a muted/no-op writable that discards data.
+			expect(capturedOutput).not.toBe(process.stderr);
+			expect(capturedOutput).not.toBe(process.stdout);
+
+			// Verify the muted output stream actually discards data (write is a no-op)
+			expect(capturedOutput).not.toBeNull();
+			// Write some data to the captured output; it should silently discard it
+			const writeResult = await new Promise<void>((resolve, reject) => {
+				capturedOutput!.write(
+					"should-be-discarded",
+					"utf8" as unknown,
+					((err: Error | null | undefined) => {
+						if (err) reject(err);
+						else resolve();
+					}) as unknown,
+				);
+			});
+			expect(writeResult).toBeUndefined(); // completed without error
+
+			// The API key must not appear in anything written to stderr
+			const allStderr = stderrWrites.join("");
+			expect(allStderr).not.toContain("secret-api-key-12345");
+
+			// The prompt text should still be printed to stderr
+			expect(allStderr).toContain("Enter your Geekbot API key:");
+		} finally {
+			process.stderr.write = origStderrWrite;
+			Object.defineProperty(process.stdin, "isTTY", {
+				value: origIsTTY,
+				configurable: true,
+			});
+		}
+	});
+
+	test("non-TTY without --api-key throws auth_setup_non_interactive", async () => {
+		// Save original
+		const origIsTTY = process.stdin.isTTY;
+		Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+
+		try {
+			await handleAuthSetup({}, GLOBAL_OPTS);
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("auth_setup_non_interactive");
+		} finally {
+			Object.defineProperty(process.stdin, "isTTY", { value: origIsTTY, configurable: true });
+		}
+	});
+
+	test("warns when replacing existing key", async () => {
+		mockGetKeychainKey.mockReturnValue("old-key");
+		const stderrSpy = mock(() => true);
+		const origWrite = process.stderr.write;
+		process.stderr.write = stderrSpy as unknown as typeof process.stderr.write;
+
+		try {
+			await handleAuthSetup({ apiKey: "new-key" }, GLOBAL_OPTS);
+			const calls = stderrSpy.mock.calls.map((c) => String(c[0]));
+			expect(calls.some((c) => c.includes("Replacing existing API key in keychain"))).toBe(true);
+			// Must NOT contain the new key's email (that would be misleading)
+			expect(calls.some((c) => c.includes("test@example.com"))).toBe(false);
+		} finally {
+			process.stderr.write = origWrite;
+		}
+	});
+
+	test("throws keychain_unavailable when setKeychainKey fails", async () => {
+		mockSetKeychainKey.mockImplementation(() => {
+			throw new Error("keychain locked");
+		});
+
+		try {
+			await handleAuthSetup({ apiKey: "my-key" }, GLOBAL_OPTS);
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("keychain_unavailable");
+		}
+	});
+});
+
+// ── handleAuthStatus ─────────────────────────────────────────────────
+
+describe("handleAuthStatus", () => {
+	test("with valid credential: outputs source, username, email", async () => {
+		await handleAuthStatus(GLOBAL_OPTS);
+
+		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
+		const envelope = mockWriteOutput.mock.calls[0][0] as {
+			ok: boolean;
+			data: {
+				authenticated: boolean;
+				source: string;
+				username: string;
+				email: string;
+			};
+		};
+		expect(envelope.ok).toBe(true);
+		expect(envelope.data.authenticated).toBe(true);
+		expect(envelope.data.source).toBe("env");
+		expect(envelope.data.username).toBe("testuser");
+		expect(envelope.data.email).toBe("test@example.com");
+	});
+
+	test("with no credential: outputs authenticated false", async () => {
+		const { CliError: CE } = await import("../../src/errors/cli-error.ts");
+		mockResolveCredential.mockImplementation(() => {
+			throw new CE("No API key found", "auth_missing", 4, false);
+		});
+
+		await handleAuthStatus(GLOBAL_OPTS);
+
+		const envelope = mockWriteOutput.mock.calls[0][0] as {
+			ok: boolean;
+			data: { authenticated: boolean; source: null };
+		};
+		expect(envelope.ok).toBe(true);
+		expect(envelope.data.authenticated).toBe(false);
+		expect(envelope.data.source).toBe(null);
+	});
+
+	test("rethrows non-auth errors", async () => {
+		mockResolveCredential.mockImplementation(() => {
+			throw new Error("network failure");
+		});
+
+		try {
+			await handleAuthStatus(GLOBAL_OPTS);
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect((e as Error).message).toBe("network failure");
+		}
+	});
+});
+
+// ── handleAuthRemove ─────────────────────────────────────────────────
+
+describe("handleAuthRemove", () => {
+	test("success: calls deleteKeychainKey and outputs removed true", async () => {
+		await handleAuthRemove(GLOBAL_OPTS);
+
+		expect(mockDeleteKeychainKey).toHaveBeenCalledTimes(1);
+		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
+		const envelope = mockWriteOutput.mock.calls[0][0] as {
+			ok: boolean;
+			data: { removed: boolean };
+		};
+		expect(envelope.ok).toBe(true);
+		expect(envelope.data.removed).toBe(true);
+	});
+
+	test("when no key exists: throws keychain_not_found", async () => {
+		mockDeleteKeychainKey.mockImplementation(() => {
+			throw new Error("no entry");
+		});
+
+		try {
+			await handleAuthRemove(GLOBAL_OPTS);
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("keychain_not_found");
+		}
+	});
+});

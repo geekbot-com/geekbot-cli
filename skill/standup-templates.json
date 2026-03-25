@@ -1,0 +1,244 @@
+{
+	"standup_templates": [
+		{
+			"id": "daily-standup",
+			"name": "Daily Standup",
+			"description": "Track daily updates and blockers on autopilot. The classic async standup for engineering and general teams.",
+			"categories": ["daily-syncs", "team-updates", "remote-collaboration"],
+			"roles": ["team-leads", "project-managers", "product-managers", "agile-team-members"],
+			"questions": [
+				{ "text": "What have you done since yesterday?" },
+				{ "text": "What will you do today?" },
+				{ "text": "Anything blocking your progress?" },
+				{ "text": "How do you feel today?" }
+			],
+			"defaults": {
+				"days": "Mon,Tue,Wed,Thu,Fri",
+				"time": "10:00"
+			}
+		},
+		{
+			"id": "retrospective",
+			"name": "Retrospective",
+			"description": "Reflect on what went well and what could go better. Designed for sprint or project retrospectives.",
+			"categories": ["continuous-improvement", "remote-collaboration"],
+			"roles": ["agile-team-members", "product-managers", "team-leads"],
+			"questions": [
+				{ "text": "What went well?" },
+				{ "text": "What didn't go so well?" },
+				{ "text": "What have you learned?" },
+				{ "text": "What still puzzles you?" }
+			],
+			"defaults": {
+				"days": "Fri",
+				"time": "16:30",
+				"note": "Typically bi-weekly, aligned with sprint cadence"
+			}
+		},
+		{
+			"id": "sales-report",
+			"name": "Sales Report",
+			"description": "Report sales progress and track team performance. End-of-day sales metrics and pipeline updates.",
+			"categories": ["daily-syncs", "team-updates"],
+			"roles": ["team-leads"],
+			"questions": [
+				{ "text": "How many meetings did you setup today?" },
+				{ "text": "How many client conversations did you have today?" },
+				{ "text": "How many new leads did you create today?" },
+				{ "text": "Anything you'd like to add?" },
+				{ "text": "Anything blocking your progress?" }
+			],
+			"defaults": {
+				"days": "Mon,Tue,Wed,Thu,Fri",
+				"time": "16:30"
+			}
+		},
+		{
+			"id": "quick-check-in",
+			"name": "Quick Check-in",
+			"description": "Keep everyone in the loop with 3 quick questions. Lighter than a full standup, good for small teams.",
+			"categories": ["daily-syncs", "team-updates", "remote-collaboration"],
+			"roles": ["team-leads", "project-managers"],
+			"questions": [
+				{ "text": "What's your main focus today?" },
+				{ "text": "How are you feeling?" },
+				{ "text": "Anything blocking your progress?" }
+			],
+			"defaults": {
+				"days": "Mon,Tue,Wed,Thu,Fri",
+				"time": "09:00"
+			}
+		},
+		{
+			"id": "well-being-check-in",
+			"name": "Well-being Check-in",
+			"description": "Check in on how your team is really doing. Covers productivity, stress, and satisfaction. Best run anonymously.",
+			"categories": ["team-well-being", "remote-collaboration"],
+			"roles": ["people-managers"],
+			"questions": [
+				{ "text": "Thinking about this past week: how productive do you feel you were?" },
+				{ "text": "Do you feel you've had more wins or roadblocks this past week?" },
+				{ "text": "How stressful did you find work in general this week?" },
+				{ "text": "How satisfied do you feel about the work you've completed this week?" },
+				{ "text": "Do you feel satisfied with your work-life balance?" },
+				{ "text": "Overall, how do you feel about your level of work-related stress?" },
+				{ "text": "Do you feel you can discuss concerns with your manager as often as needed?" }
+			],
+			"defaults": {
+				"days": "Fri",
+				"time": "16:00",
+				"note": "Typically bi-weekly, anonymous"
+			}
+		},
+		{
+			"id": "confidential-check-in",
+			"name": "Confidential Check-in",
+			"description": "Run multiple 1-on-1s with your team all in one go. Replies stay private between manager and each participant.",
+			"categories": ["team-updates", "remote-collaboration"],
+			"roles": ["project-managers", "team-leads"],
+			"questions": [
+				{ "text": "Was anything a particular struggle?" },
+				{ "text": "If there was one thing I could do to help you, what would it be?" },
+				{ "text": "On a scale of 1-10, how happy are you with your work-life balance?" },
+				{ "text": "Growth-wise, where do you want to focus next month?" },
+				{ "text": "Anything you'd like to add?" }
+			],
+			"defaults": {
+				"days": "Fri",
+				"time": "15:00",
+				"note": "Weekly or bi-weekly, private channel between manager and participant"
+			}
+		},
+		{
+			"id": "meeting-notes",
+			"name": "Meeting Notes",
+			"description": "Sum up the talking points of every meeting. Structured capture of decisions and action items.",
+			"categories": ["team-updates"],
+			"roles": ["project-managers", "product-managers"],
+			"questions": [
+				{ "text": "What were the main talking points?" },
+				{ "text": "What decisions were made?" },
+				{ "text": "What are the action items and who owns them?" }
+			],
+			"defaults": {
+				"days": "Mon,Tue,Wed,Thu,Fri",
+				"time": "17:00",
+				"note": "Trigger on-demand after meetings rather than on a fixed schedule"
+			}
+		},
+		{
+			"id": "today-i-learned",
+			"name": "Today I Learned",
+			"description": "Inspire your team to learn something new. A lightweight knowledge-sharing ritual.",
+			"categories": ["continuous-improvement", "team-bonding"],
+			"roles": ["team-leads"],
+			"questions": [
+				{ "text": "What did you learn today?" },
+				{ "text": "How might this be useful for the team?" }
+			],
+			"defaults": {
+				"days": "Mon,Tue,Wed,Thu,Fri",
+				"time": "17:00"
+			}
+		},
+		{
+			"id": "product-changelog",
+			"name": "Product Changelog",
+			"description": "Keep track of changes in product development. Structured release and change tracking.",
+			"categories": ["team-updates", "continuous-improvement"],
+			"roles": ["product-managers"],
+			"questions": [
+				{ "text": "What changed or shipped today?" },
+				{ "text": "What's the user impact?" },
+				{ "text": "Any follow-up items or known issues?" }
+			],
+			"defaults": {
+				"days": "Mon,Tue,Wed,Thu,Fri",
+				"time": "17:00"
+			}
+		},
+		{
+			"id": "incident-log",
+			"name": "Incident Log",
+			"description": "Log incidents to share with the team. Structured incident reporting and post-mortem capture.",
+			"categories": ["team-updates"],
+			"roles": ["team-leads"],
+			"questions": [
+				{ "text": "What happened?" },
+				{ "text": "What was the impact?" },
+				{ "text": "What was the root cause?" },
+				{ "text": "What are the follow-up actions?" }
+			],
+			"defaults": {
+				"days": "Mon,Tue,Wed,Thu,Fri",
+				"time": "09:00",
+				"note": "Trigger on-demand when incidents occur"
+			}
+		},
+		{
+			"id": "monday-watercooler",
+			"name": "Monday Water Cooler",
+			"description": "Spark Monday morning chitchat with a friendly question. Team bonding for remote teams.",
+			"categories": ["team-bonding"],
+			"roles": ["team-leads", "people-managers"],
+			"questions": [
+				{ "text": "What was the highlight of your weekend?" },
+				{ "text": "What are you looking forward to this week?" }
+			],
+			"defaults": {
+				"days": "Mon",
+				"time": "09:30"
+			}
+		},
+		{
+			"id": "team-feedback",
+			"name": "Team Feedback",
+			"description": "Let your teammates know how they're doing. Structured peer feedback collection.",
+			"categories": ["continuous-improvement", "team-bonding"],
+			"roles": ["team-leads", "people-managers"],
+			"questions": [
+				{ "text": "Who on the team did great work recently and what did they do?" },
+				{ "text": "What's one thing we could do better as a team?" },
+				{ "text": "Any shout-outs or kudos?" }
+			],
+			"defaults": {
+				"days": "Fri",
+				"time": "16:00"
+			}
+		}
+	],
+	"poll_templates": [
+		{
+			"id": "yes-no",
+			"name": "Yes / No",
+			"description": "Make fast decisions with simple Yes/No votes.",
+			"question": "Do you agree with the proposal?",
+			"choices": ["Yes", "No"],
+			"note": "Replace the question with your actual decision topic"
+		},
+		{
+			"id": "agree-disagree",
+			"name": "Agree / Disagree",
+			"description": "Quickly gauge sentiment on a topic with a Likert-style scale.",
+			"question": "How do you feel about this proposal?",
+			"choices": ["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"],
+			"note": "Replace the question with your actual topic"
+		},
+		{
+			"id": "employee-nps",
+			"name": "Employee NPS Survey",
+			"description": "Evaluate and track employee commitment and loyalty with a standard NPS question.",
+			"question": "On a scale of 0-10, how likely are you to recommend this company as a place to work?",
+			"choices": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+			"note": "NPS = % Promoters (9-10) minus % Detractors (0-6)"
+		},
+		{
+			"id": "team-feedback-weekly",
+			"name": "Team Feedback Weekly",
+			"description": "Gather weekly insights on team performance and morale.",
+			"question": "How would you rate this week's team performance?",
+			"choices": ["Excellent", "Good", "Average", "Below Average", "Poor"],
+			"note": "Good for tracking team health trends over time"
+		}
+	]
+}

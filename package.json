@@ -1,0 +1,32 @@
+{
+	"name": "geekbot-cli",
+	"version": "0.1.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/geekbot-com/geekbot-cli"
+	},
+	"bin": {
+		"geekbot": "./src/cli/index.ts"
+	},
+	"scripts": {
+		"dev": "bun run src/cli/index.ts",
+		"test": "bun test",
+		"test:integration": "bun test tests/integration/",
+		"lint": "bunx biome check .",
+		"format": "bunx biome format --write .",
+		"check": "bunx biome check --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.7",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@napi-rs/keyring": "^1.2.0",
+		"commander": "^14.0.3",
+		"zod": "^4.3.6"
+	}
+}

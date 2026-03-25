@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install
+      - run: bun run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install
+      - run: bunx tsc --noEmit
+
+  test:
+    needs: [lint, typecheck]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install
+      - run: bun test
+
+  coverage:
+    needs: [lint, typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install
+      - name: Run tests with coverage
+        run: bun test --coverage 2>&1 | tee coverage-output.txt
+      - name: Enforce 95% line coverage threshold
+        run: |
+          COVERAGE=$(grep 'All files' coverage-output.txt | awk -F'|' '{for(i=1;i<=NF;i++){gsub(/^ +| +$/,"",$i)}}; {print $3}')
+          if [ -z "$COVERAGE" ]; then
+            echo "::error::Could not parse coverage from output"
+            cat coverage-output.txt
+            exit 1
+          fi
+          echo "Line coverage: ${COVERAGE}%"
+          if awk "BEGIN{exit(!(${COVERAGE} < 95))}"; then
+            echo "::error::Line coverage ${COVERAGE}% is below 95% threshold"
+            exit 1
+          fi
+          echo "Coverage threshold met: ${COVERAGE}% >= 95%"
+
+  integration:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install
+      - name: Check integration test secret
+        run: |
+          if [ -z "$GEEKBOT_INTEGRATION_TEST_API_KEY" ]; then
+            echo "::warning::GEEKBOT_INTEGRATION_TEST_API_KEY not set — integration tests will be skipped"
+          fi
+        env:
+          GEEKBOT_INTEGRATION_TEST_API_KEY: ${{ secrets.GEEKBOT_INTEGRATION_TEST_API_KEY }}
+      - run: bun test tests/integration/
+        env:
+          GEEKBOT_INTEGRATION_TEST_API_KEY: ${{ secrets.GEEKBOT_INTEGRATION_TEST_API_KEY }}
