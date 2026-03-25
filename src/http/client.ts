@@ -16,10 +16,11 @@ export interface HttpClient {
 
 export function createHttpClient(
 	apiKey: string,
-	options?: { debug?: boolean; fetch?: typeof globalThis.fetch },
+	options?: { debug?: boolean },
+	fetchImpl?: typeof globalThis.fetch,
 ): HttpClient {
 	const debug = options?.debug ?? false;
-	const _fetch = options?.fetch ?? globalThis.fetch;
+	const _fetch = fetchImpl ?? globalThis.fetch;
 
 	async function request<T>(
 		method: string,

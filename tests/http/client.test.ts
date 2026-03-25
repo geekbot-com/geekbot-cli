@@ -50,7 +50,7 @@ afterAll(() => {
 });
 
 function client(apiKey = "test-key", debug = false) {
-	return createHttpClient(apiKey, { debug, fetch: spy.fn });
+	return createHttpClient(apiKey, { debug }, spy.fn);
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
