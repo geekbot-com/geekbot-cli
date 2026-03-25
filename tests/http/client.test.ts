@@ -1,22 +1,20 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { CliError } from "../../src/errors/cli-error.ts";
 import { createHttpClient } from "../../src/http/client.ts";
 import { APP_VERSION } from "../../src/utils/constants.ts";
 
-const originalFetch = globalThis.fetch;
-const mockFetch = mock<typeof fetch>();
+const mockFetch = spyOn(globalThis, "fetch");
 
 const originalSleep = Bun.sleep;
 
 beforeEach(() => {
 	mockFetch.mockReset();
-	globalThis.fetch = mockFetch;
 	// Mock Bun.sleep to avoid real delays during retry tests
 	(Bun as { sleep: typeof Bun.sleep }).sleep = mock(() => Promise.resolve()) as typeof Bun.sleep;
 });
 
 afterAll(() => {
-	globalThis.fetch = originalFetch;
+	mockFetch.mockRestore();
 	(Bun as { sleep: typeof Bun.sleep }).sleep = originalSleep;
 });
 
