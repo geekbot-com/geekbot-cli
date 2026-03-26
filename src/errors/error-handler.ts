@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
-import type { FailureEnvelope } from "../types.ts";
+import { failure } from "../output/envelope.ts";
+import { writeOutput } from "../output/formatter.ts";
 import { CliError } from "./cli-error.ts";
 import { ExitCode } from "./exit-codes.ts";
 
@@ -14,22 +15,15 @@ function formatZodMessage(error: ZodError): string {
 
 export function handleError(error: unknown, debug: boolean = false): never {
 	if (error instanceof ZodError) {
-		const envelope: FailureEnvelope = {
-			ok: false,
-			data: null,
-			error: {
+		writeOutput(
+			failure({
 				code: "schema_validation_error",
 				message: `Unexpected API response: ${formatZodMessage(error)}`,
 				retryable: false,
 				suggestion:
 					"The API returned data in an unexpected format. The API may have changed or there may be a version mismatch.",
-			},
-			metadata: {
-				timestamp: new Date().toISOString(),
-			},
-		};
-
-		process.stdout.write(`${JSON.stringify(envelope, null, 2)}\n`);
+			}),
+		);
 
 		if (debug) {
 			process.stderr.write(`[debug] ZodError issues: ${JSON.stringify(error.issues)}\n`);
@@ -39,21 +33,14 @@ export function handleError(error: unknown, debug: boolean = false): never {
 	}
 
 	if (error instanceof CliError) {
-		const envelope: FailureEnvelope = {
-			ok: false,
-			data: null,
-			error: {
+		writeOutput(
+			failure({
 				code: error.code,
 				message: error.message,
 				retryable: error.retryable,
 				suggestion: error.suggestion ?? null,
-			},
-			metadata: {
-				timestamp: new Date().toISOString(),
-			},
-		};
-
-		process.stdout.write(`${JSON.stringify(envelope, null, 2)}\n`);
+			}),
+		);
 
 		if (debug && error.context) {
 			process.stderr.write(`[debug] Error context: ${JSON.stringify(error.context)}\n`);
@@ -63,20 +50,14 @@ export function handleError(error: unknown, debug: boolean = false): never {
 	}
 
 	// Unknown/unexpected error
-	const envelope: FailureEnvelope = {
-		ok: false,
-		data: null,
-		error: {
+	writeOutput(
+		failure({
 			code: "internal_error",
 			message: error instanceof Error ? error.message : String(error),
 			retryable: false,
 			suggestion: "This is an unexpected error. Please report it.",
-		},
-		metadata: {
-			timestamp: new Date().toISOString(),
-		},
-	};
+		}),
+	);
 
-	process.stdout.write(`${JSON.stringify(envelope, null, 2)}\n`);
 	process.exit(ExitCode.GENERAL);
 }
