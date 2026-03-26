@@ -38,7 +38,7 @@ jobs:
           bun test tests/auth/ tests/http/ tests/output/ tests/utils/ tests/schemas/
           bun test tests/errors/error-handler.test.ts tests/errors/cli-error.test.ts tests/errors/not-found-helper.test.ts tests/errors/exit-codes.test.ts
           bun test tests/errors/error-handler-output.test.ts
-          bun test tests/handlers/ tests/cli/
+          bun test tests/handlers/ tests/cli/ tests/ci/
 
   test-macos:
     needs: [lint, typecheck]
@@ -52,7 +52,7 @@ jobs:
           bun test tests/auth/ tests/http/ tests/output/ tests/utils/ tests/schemas/
           bun test tests/errors/error-handler.test.ts tests/errors/cli-error.test.ts tests/errors/not-found-helper.test.ts tests/errors/exit-codes.test.ts
           bun test tests/errors/error-handler-output.test.ts
-          bun test tests/handlers/ tests/cli/
+          bun test tests/handlers/ tests/cli/ tests/ci/
 
   coverage:
     needs: [lint, typecheck]
@@ -66,7 +66,7 @@ jobs:
         run: |
           bun test --coverage tests/auth/ tests/http/ tests/output/ tests/utils/ tests/schemas/ tests/errors/error-handler.test.ts tests/errors/cli-error.test.ts tests/errors/not-found-helper.test.ts tests/errors/exit-codes.test.ts 2>&1 | tee coverage-output.txt
           bun test tests/errors/error-handler-output.test.ts
-          bun test tests/handlers/ tests/cli/
+          bun test tests/handlers/ tests/cli/ tests/ci/
       - name: Enforce 95% line coverage threshold
         run: |
           COVERAGE=$(grep 'All files' coverage-output.txt | awk -F'|' '{for(i=1;i<=NF;i++){gsub(/^ +| +$/,"",$i)}}; {print $3}')
@@ -98,5 +98,6 @@ jobs:
         env:
           GEEKBOT_INTEGRATION_TEST_API_KEY: ${{ secrets.GEEKBOT_INTEGRATION_TEST_API_KEY }}
       - run: bun test tests/integration/
+        if: env.GEEKBOT_INTEGRATION_TEST_API_KEY != ''
         env:
           GEEKBOT_INTEGRATION_TEST_API_KEY: ${{ secrets.GEEKBOT_INTEGRATION_TEST_API_KEY }}
