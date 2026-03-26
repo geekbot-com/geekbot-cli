@@ -1,13 +1,11 @@
 import type { GlobalOptions } from "../cli/globals.ts";
-import { CliError } from "../errors/cli-error.ts";
-import { ExitCode } from "../errors/exit-codes.ts";
 import { createAuthenticatedClient } from "../http/authenticated-client.ts";
 import { success, successList } from "../output/envelope.ts";
 import { writeOutput } from "../output/formatter.ts";
 import { SubmittedReportSchema, TimelineReportListSchema } from "../schemas/report.ts";
 import { parseAnswersInput, parseDateFilter } from "../utils/input-parsers.ts";
 import { buildReceipt } from "../utils/receipt.ts";
-import { validateNumericId, validateSlackId } from "../utils/validation.ts";
+import { validateLimit, validateNumericId, validateSlackId } from "../utils/validation.ts";
 
 export interface ReportListOptions {
 	standupId?: string;
@@ -53,16 +51,7 @@ export async function handleReportList(
 	}
 
 	if (options.limit) {
-		const limitNum = Number.parseInt(options.limit, 10);
-		if (Number.isNaN(limitNum) || limitNum < 1) {
-			throw new CliError(
-				`Invalid limit: "${options.limit}" — must be a positive integer`,
-				"validation_error",
-				ExitCode.VALIDATION,
-				false,
-				"Example: --limit 10",
-			);
-		}
+		const limitNum = validateLimit(options.limit);
 		params.limit = String(limitNum);
 	}
 

@@ -27,7 +27,7 @@ export async function resolveCredential(
 	try {
 		const keychainKey = getKey();
 		if (keychainKey) {
-			return { apiKey: keychainKey, source: "keychain" };
+			return { apiKey: keychainKey.trim(), source: "keychain" };
 		}
 	} catch {
 		// Keychain unavailable (headless, CI) -- fall through to error

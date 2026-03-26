@@ -18,6 +18,7 @@ import {
 } from "../utils/receipt.ts";
 import {
 	validateDayAbbreviations,
+	validateLimit,
 	validateNumericId,
 	validateSlackIdList,
 	validateTimeFormat,
@@ -162,16 +163,7 @@ export async function handleStandupList(
 
 	// Limit — cap results after all filters
 	if (options.limit) {
-		const limitNum = Number.parseInt(options.limit, 10);
-		if (Number.isNaN(limitNum) || limitNum < 1) {
-			throw new CliError(
-				`Invalid limit: "${options.limit}" — must be a positive integer`,
-				"validation_error",
-				ExitCode.VALIDATION,
-				false,
-				"Example: --limit 10",
-			);
-		}
+		const limitNum = validateLimit(options.limit);
 		standups = standups.slice(0, limitNum);
 	}
 
@@ -221,8 +213,7 @@ export async function handleStandupCreate(
 	const days = options.days ?? "Mon,Tue,Wed,Thu,Fri";
 
 	validateTimeFormat(time);
-	const daysList = days.split(",");
-	validateDayAbbreviations(daysList);
+	const daysList = validateDayAbbreviations(days.split(","));
 
 	const body: Record<string, unknown> = {
 		name: options.name,
@@ -314,9 +305,7 @@ export async function handleStandupUpdate(
 			}
 
 			if (options.days !== undefined) {
-				const days = options.days.split(",");
-				validateDayAbbreviations(days);
-				body.days = days;
+				body.days = validateDayAbbreviations(options.days.split(","));
 			}
 
 			if (options.questions !== undefined) {
@@ -365,8 +354,7 @@ export async function handleStandupReplace(
 			// Build full body — PUT requires complete representation
 			const time = options.time ?? "10:00";
 			validateTimeFormat(time);
-			const days = (options.days ?? "Mon,Tue,Wed,Thu,Fri").split(",");
-			validateDayAbbreviations(days);
+			const days = validateDayAbbreviations((options.days ?? "Mon,Tue,Wed,Thu,Fri").split(","));
 
 			const body: Record<string, unknown> = {
 				name: options.name,

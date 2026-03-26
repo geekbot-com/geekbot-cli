@@ -222,22 +222,21 @@ describe("handleReportList", () => {
 		expect(params).toEqual({ after: "1705276800", before: "1705363200" });
 	});
 
-	test("truncates decimal limit via parseInt (1.5 becomes 1)", async () => {
-		mockGet.mockResolvedValueOnce([]);
+	test("rejects decimal limit value", async () => {
+		await expect(handleReportList({ limit: "1.5" }, defaultGlobalOpts)).rejects.toThrow(
+			"Invalid limit",
+		);
 
-		await handleReportList({ limit: "1.5" }, defaultGlobalOpts);
-
-		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("limit", "1");
+		expect(mockGet).not.toHaveBeenCalled();
 	});
 
-	test("truncates scientific notation limit via parseInt (1e10 becomes 1)", async () => {
+	test("accepts scientific notation limit as valid integer", async () => {
 		mockGet.mockResolvedValueOnce([]);
 
 		await handleReportList({ limit: "1e10" }, defaultGlobalOpts);
 
 		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("limit", "1");
+		expect(params).toHaveProperty("limit", "10000000000");
 	});
 
 	test("accepts very large integer limit", async () => {

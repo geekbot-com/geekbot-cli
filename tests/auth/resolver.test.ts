@@ -142,4 +142,12 @@ describe("resolveCredential", () => {
 		expect(result.apiKey).toBe("env-key");
 		expect(result.source).toBe("env");
 	});
+
+	test("trims whitespace from keychain API key", async () => {
+		delete process.env.GEEKBOT_API_KEY;
+		mockGetKeychainKey.mockReturnValue("  keychain-key\n");
+		const result = await resolveCredential({}, mockGetKeychainKey);
+		expect(result.apiKey).toBe("keychain-key");
+		expect(result.source).toBe("keychain");
+	});
 });

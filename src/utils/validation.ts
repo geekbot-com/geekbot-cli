@@ -83,12 +83,38 @@ export function validateWaitTime(value: string): number {
 }
 
 /**
+ * Validate that a string is a valid positive integer for use as a limit.
+ */
+export function validateLimit(value: string): number {
+	const num = Number(value);
+	if (!Number.isSafeInteger(num) || num < 1) {
+		throw new CliError(
+			`Invalid limit: "${value}" — must be a positive integer`,
+			"validation_error",
+			ExitCode.VALIDATION,
+			false,
+			"Example: --limit 10",
+		);
+	}
+	return num;
+}
+
+/**
  * Validate day abbreviations (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
  */
 export function validateDayAbbreviations(values: string[]): string[] {
-	const valid = new Set(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
-	for (const day of values) {
-		if (!valid.has(day)) {
+	const validMap = new Map([
+		["mon", "Mon"],
+		["tue", "Tue"],
+		["wed", "Wed"],
+		["thu", "Thu"],
+		["fri", "Fri"],
+		["sat", "Sat"],
+		["sun", "Sun"],
+	]);
+	return values.map((day) => {
+		const normalized = validMap.get(day.toLowerCase());
+		if (!normalized) {
 			throw new CliError(
 				`Invalid day abbreviation: "${day}". Valid values: Mon, Tue, Wed, Thu, Fri, Sat, Sun.`,
 				"validation_error",
@@ -97,6 +123,6 @@ export function validateDayAbbreviations(values: string[]): string[] {
 				'Use three-letter abbreviations: --days "Mon,Wed,Fri"',
 			);
 		}
-	}
-	return values;
+		return normalized;
+	});
 }

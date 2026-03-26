@@ -3,6 +3,7 @@ import { CliError } from "../../src/errors/cli-error.ts";
 import * as validationModule from "../../src/utils/validation.ts";
 import {
 	validateDayAbbreviations,
+	validateLimit,
 	validateNumericId,
 	validateSlackId,
 	validateSlackIdList,
@@ -15,6 +16,7 @@ describe("validation module public API", () => {
 		const exportedNames = Object.keys(validationModule).sort();
 		expect(exportedNames).toEqual([
 			"validateDayAbbreviations",
+			"validateLimit",
 			"validateNumericId",
 			"validateSlackId",
 			"validateSlackIdList",
@@ -208,5 +210,60 @@ describe("validateDayAbbreviations", () => {
 
 	test("rejects invalid day abbreviation", () => {
 		expect(() => validateDayAbbreviations(["Mon", "Xyz"])).toThrow(CliError);
+	});
+
+	test("accepts lowercase day abbreviations and normalizes to title case", () => {
+		expect(validateDayAbbreviations(["mon", "wed", "fri"])).toEqual(["Mon", "Wed", "Fri"]);
+	});
+
+	test("accepts uppercase day abbreviations and normalizes to title case", () => {
+		expect(validateDayAbbreviations(["MON", "TUE"])).toEqual(["Mon", "Tue"]);
+	});
+
+	test("accepts mixed-case day abbreviations and normalizes to title case", () => {
+		expect(validateDayAbbreviations(["mOn", "tHU"])).toEqual(["Mon", "Thu"]);
+	});
+});
+
+describe("validateLimit", () => {
+	test("returns number for valid positive integer string", () => {
+		expect(validateLimit("10")).toBe(10);
+	});
+
+	test("returns 1 for minimum valid limit", () => {
+		expect(validateLimit("1")).toBe(1);
+	});
+
+	test("throws CliError for zero", () => {
+		expect(() => validateLimit("0")).toThrow(CliError);
+	});
+
+	test("throws CliError for negative number", () => {
+		expect(() => validateLimit("-5")).toThrow(CliError);
+	});
+
+	test("throws CliError for non-numeric string", () => {
+		expect(() => validateLimit("abc")).toThrow(CliError);
+	});
+
+	test("throws CliError for decimal", () => {
+		expect(() => validateLimit("1.5")).toThrow(CliError);
+	});
+
+	test("error has exitCode 6 (VALIDATION)", () => {
+		try {
+			validateLimit("abc");
+		} catch (e) {
+			expect((e as CliError).exitCode).toBe(6);
+			expect((e as CliError).code).toBe("validation_error");
+		}
+	});
+
+	test("error message includes the invalid value", () => {
+		try {
+			validateLimit("abc");
+		} catch (e) {
+			expect((e as CliError).message).toContain("abc");
+		}
 	});
 });

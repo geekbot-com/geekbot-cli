@@ -21,6 +21,9 @@ export function getKeychainKey(): string | null {
  * Throws if keychain is unavailable (caller should catch and suggest env var).
  */
 export function setKeychainKey(apiKey: string): void {
+	if (!apiKey.trim()) {
+		throw new Error("API key must not be empty");
+	}
 	const entry = new Entry(SERVICE, ACCOUNT);
 	entry.setPassword(apiKey);
 }

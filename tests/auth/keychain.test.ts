@@ -53,6 +53,9 @@ mock.module("../../src/auth/keychain.ts", () => {
 			}
 		},
 		setKeychainKey(apiKey: string): void {
+			if (!apiKey.trim()) {
+				throw new Error("API key must not be empty");
+			}
 			const entry = new MockEntry(SERVICE, ACCOUNT);
 			entry.setPassword(apiKey);
 		},
@@ -152,6 +155,14 @@ describe("setKeychainKey", () => {
 		});
 
 		expect(() => setKeychainKey("some-key")).toThrow("keychain locked");
+	});
+
+	test("throws on empty string", () => {
+		expect(() => setKeychainKey("")).toThrow();
+	});
+
+	test("throws on whitespace-only string", () => {
+		expect(() => setKeychainKey("   ")).toThrow();
 	});
 });
 
