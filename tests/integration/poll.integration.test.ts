@@ -13,7 +13,7 @@ describe.skipIf(!API_KEY)("Poll Integration", () => {
 		} catch {
 			pollsAvailable = false;
 		}
-	});
+	}, 15000);
 
 	test("create poll, get by id, and retrieve votes", async () => {
 		if (!pollsAvailable) {
