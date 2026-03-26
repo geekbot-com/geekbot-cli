@@ -54,7 +54,7 @@ describe("CLI program registration", () => {
 		const standupCmd = program.commands.find((c) => c.name() === "standup");
 		expect(standupCmd).toBeDefined();
 		expect(() => {
-			standupCmd!.parse(["--nonexistent-flag"], { from: "user" });
+			standupCmd?.parse(["--nonexistent-flag"], { from: "user" });
 		}).toThrow(CommanderError);
 	});
 

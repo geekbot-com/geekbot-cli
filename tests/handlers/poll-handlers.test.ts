@@ -168,7 +168,7 @@ describe("handlePollList", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v1/polls");
 		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			ok: boolean;
 			data: unknown[];
 			metadata: { count: number };
@@ -206,7 +206,7 @@ describe("handlePollGet", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v1/polls/456");
 		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			ok: boolean;
 			data: { id: number };
 		};
@@ -241,7 +241,7 @@ describe("handlePollCreate", () => {
 		);
 
 		expect(mockPost).toHaveBeenCalledTimes(1);
-		const [path, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [path, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(path).toBe("/v1/polls");
 		expect(body.name).toBe("Lunch");
 		expect(body.channel).toBe("#team");
@@ -260,7 +260,7 @@ describe("handlePollCreate", () => {
 			GLOBAL_OPTS,
 		);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { operation: string; undo: string | null };
 		};
 		expect(envelope.metadata.operation).toBe("created");
@@ -278,7 +278,7 @@ describe("handlePollVotes", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v1/polls/456/votes", undefined);
 		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			ok: boolean;
 			data: { total_results: number };
 		};
@@ -306,7 +306,7 @@ describe("handlePollVotes", () => {
 		});
 		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			ok: boolean;
 			data: { total_results: number };
 		};
@@ -321,7 +321,7 @@ describe("handlePollVotes", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v1/polls/456/votes", undefined);
 		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			ok: boolean;
 			data: { total_results: number };
 		};

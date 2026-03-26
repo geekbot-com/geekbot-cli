@@ -26,7 +26,7 @@ describe("TeamResponseSchema", () => {
 
 	test("users[0] has expected normalized fields", () => {
 		const result = TeamResponseSchema.parse(teamFixture);
-		const user = result.users[0]!;
+		const user = result.users[0] as (typeof result.users)[number];
 		expect(user.id).toBe("U10");
 		expect(user.username).toBe("alice");
 		expect(user.email).toBe("alice@test.com");

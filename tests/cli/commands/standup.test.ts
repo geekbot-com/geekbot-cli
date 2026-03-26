@@ -264,7 +264,7 @@ describe("createStandupCommand", () => {
 			],
 			{ from: "user" },
 		);
-		const callArgs = mockHandlers.handleStandupCreate.mock.calls[0]! as [Record<string, unknown>];
+		const callArgs = mockHandlers.handleStandupCreate.mock.calls[0] as [Record<string, unknown>];
 		const opts = callArgs[0];
 		expect(opts.time).toBeUndefined();
 		expect(opts.days).toBeUndefined();
@@ -323,7 +323,7 @@ describe("createStandupCommand", () => {
 		program.addCommand(createStandupCommand());
 		await program.parseAsync(["standup", "delete", "42", "--api-key", "test"], { from: "user" });
 		expect(mockHandlers.handleStandupDelete).toHaveBeenCalled();
-		const callArgs = mockHandlers.handleStandupDelete.mock.calls[0]! as [
+		const callArgs = mockHandlers.handleStandupDelete.mock.calls[0] as [
 			string,
 			Record<string, unknown>,
 		];

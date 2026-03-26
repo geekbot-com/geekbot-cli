@@ -128,9 +128,9 @@ describe("MeTeamsResponseSchema", () => {
 			],
 		});
 		expect(response.teams).toHaveLength(2);
-		expect(response.teams[0]!.name).toBe("Engineering");
-		expect(response.teams[0]!.is_admin).toBe(true);
-		expect(response.teams[0]!.standup_count).toBe(3);
+		expect(response.teams[0]?.name).toBe("Engineering");
+		expect(response.teams[0]?.is_admin).toBe(true);
+		expect(response.teams[0]?.standup_count).toBe(3);
 	});
 
 	test("parses empty teams array", () => {
@@ -158,7 +158,7 @@ describe("TeamResponseSchema", () => {
 		expect(response.id).toBe(42);
 		expect(response.name).toBe("Engineering");
 		expect(response.users).toHaveLength(1);
-		expect(response.users[0]!.username).toBe("jane");
+		expect(response.users[0]?.username).toBe("jane");
 	});
 
 	test("parses team with empty users array", () => {

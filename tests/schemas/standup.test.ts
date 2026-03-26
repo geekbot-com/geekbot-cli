@@ -93,7 +93,7 @@ describe("StandupListSchema", () => {
 			{ ...BASE_STANDUP, wait_time: 120 },
 			{ ...BASE_STANDUP, id: 2, wait_time: 300 },
 		]);
-		expect(standups[0]!.wait_time).toBe(2);
-		expect(standups[1]!.wait_time).toBe(5);
+		expect(standups[0]?.wait_time).toBe(2);
+		expect(standups[1]?.wait_time).toBe(5);
 	});
 });

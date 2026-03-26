@@ -99,7 +99,7 @@ describe("GET requests", () => {
 		await c.get("/v1/standups");
 
 		expect(spy.calls).toHaveLength(1);
-		const [url, init] = spy.calls[0]!;
+		const [url, init] = spy.calls[0] as FetchArgs;
 		expect(url).toContain("/v1/standups");
 		expect(init?.method).toBe("GET");
 		expect(init?.headers).toEqual({
@@ -114,7 +114,7 @@ describe("GET requests", () => {
 		const c = client();
 		await c.get("/v1/standups", { user_id: "5" });
 
-		const [url] = spy.calls[0]!;
+		const [url] = spy.calls[0] as FetchArgs;
 		expect(String(url)).toContain("?user_id=5");
 	});
 
@@ -146,7 +146,7 @@ describe("DELETE requests", () => {
 		const c = client();
 		await c.delete("/v1/standups/42");
 
-		const [, init] = spy.calls[0]!;
+		const [, init] = spy.calls[0] as FetchArgs;
 		expect(init?.method).toBe("DELETE");
 	});
 });
@@ -157,7 +157,7 @@ describe("POST requests", () => {
 		const c = client();
 		await c.post("/v1/standups", { name: "Test" });
 
-		const [, init] = spy.calls[0]!;
+		const [, init] = spy.calls[0] as FetchArgs;
 		expect(init?.method).toBe("POST");
 		expect(init?.body).toBe(JSON.stringify({ name: "Test" }));
 	});
@@ -176,7 +176,7 @@ describe("PATCH requests", () => {
 		const c = client();
 		await c.patch("/v1/standups/42", { name: "Updated" });
 
-		const [, init] = spy.calls[0]!;
+		const [, init] = spy.calls[0] as FetchArgs;
 		expect(init?.method).toBe("PATCH");
 		expect(init?.body).toBe(JSON.stringify({ name: "Updated" }));
 	});
@@ -197,7 +197,7 @@ describe("PUT requests", () => {
 		const c = client();
 		await c.put("/v1/standups/42", { name: "Replaced", channel: "#new" });
 
-		const [, init] = spy.calls[0]!;
+		const [, init] = spy.calls[0] as FetchArgs;
 		expect(init?.method).toBe("PUT");
 		expect(init?.body).toBe(JSON.stringify({ name: "Replaced", channel: "#new" }));
 	});
@@ -376,7 +376,7 @@ describe("path normalization", () => {
 		const c = client();
 		await c.get("/v1/standups/");
 
-		const [url] = spy.calls[0]!;
+		const [url] = spy.calls[0] as FetchArgs;
 		expect(String(url)).toContain("/v1/standups");
 		expect(String(url)).not.toContain("/v1/standups/");
 	});

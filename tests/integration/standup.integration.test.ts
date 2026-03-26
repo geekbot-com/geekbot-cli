@@ -79,7 +79,7 @@ describe.skipIf(!API_KEY)("Standup Integration", () => {
 
 		const found = standups.find((s) => s.id === created.id);
 		expect(found).toBeDefined();
-		expect(found!.name).toBe(name);
+		expect(found?.name).toBe(name);
 	}, 30000);
 
 	test("replace (PUT) overwrites standup completely", async () => {

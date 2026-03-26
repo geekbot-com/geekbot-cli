@@ -83,8 +83,8 @@ describe.skipIf(!API_KEY)("Report Lifecycle: create standup -> post report -> fe
 
 		const fetched = reports.find((r) => r.id === submitted.id);
 		expect(fetched).toBeDefined();
-		expect(fetched!.standup_id).toBe(standup.id);
-		for (const q of fetched!.questions) {
+		expect(fetched?.standup_id).toBe(standup.id);
+		for (const q of fetched?.questions ?? []) {
 			expect(q.answer).toBe(answerText);
 		}
 	}, 30000);

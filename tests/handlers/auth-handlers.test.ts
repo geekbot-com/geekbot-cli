@@ -193,7 +193,7 @@ describe("handleAuthSetup", () => {
 			expect(capturedOutput).not.toBeNull();
 			// Write some data to the captured output; it should silently discard it
 			const writeResult = await new Promise<void>((resolve, reject) => {
-				capturedOutput!.write(
+				capturedOutput?.write(
 					"should-be-discarded",
 					"utf8" as unknown,
 					((err: Error | null | undefined) => {

@@ -142,7 +142,7 @@ describe("handleStandupList", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v1/standups", undefined);
 		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			ok: boolean;
 			data: unknown[];
 			metadata: { count: number };
@@ -163,21 +163,21 @@ describe("handleStandupList", () => {
 		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
 		await handleStandupList({}, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<{ wait_time: number }>;
 		};
-		expect(envelope.data[0]!.wait_time).toBe(10);
+		expect(envelope.data[0]?.wait_time).toBe(10);
 	});
 
 	test("--brief strips to only id, name, channel", async () => {
 		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
 		await handleStandupList({ brief: true }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<Record<string, unknown>>;
 		};
 		expect(envelope.data).toHaveLength(1);
-		const item = envelope.data[0]!;
+		const item = envelope.data[0] as Record<string, unknown>;
 		expect(Object.keys(item).sort()).toEqual(["channel", "id", "name"]);
 		expect(item.id).toBe(42);
 		expect(item.name).toBe("Daily Standup");
@@ -194,12 +194,12 @@ describe("handleStandupList", () => {
 		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP, second]));
 		await handleStandupList({ name: "daily" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<{ id: number }>;
 			metadata: { count: number };
 		};
 		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]!.id).toBe(42);
+		expect(envelope.data[0]?.id).toBe(42);
 		expect(envelope.metadata.count).toBe(1);
 	});
 
@@ -208,11 +208,11 @@ describe("handleStandupList", () => {
 		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP, second]));
 		await handleStandupList({ channel: "retro" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<{ id: number }>;
 		};
 		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]!.id).toBe(43);
+		expect(envelope.data[0]?.id).toBe(43);
 	});
 
 	test("--mine fetches /v1/me and filters by user membership", async () => {
@@ -252,11 +252,11 @@ describe("handleStandupList", () => {
 
 		await handleStandupList({ mine: true }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<{ id: number }>;
 		};
 		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]!.id).toBe(42);
+		expect(envelope.data[0]?.id).toBe(42);
 		expect(mockGet).toHaveBeenCalledWith("/v1/me");
 	});
 
@@ -284,7 +284,7 @@ describe("handleStandupList", () => {
 
 		await handleStandupList({ mine: true }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: unknown[];
 			metadata: { count: number };
 		};
@@ -311,11 +311,11 @@ describe("handleStandupList", () => {
 
 		await handleStandupList({ member: "UHNM44125" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<{ id: number }>;
 		};
 		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]!.id).toBe(42);
+		expect(envelope.data[0]?.id).toBe(42);
 	});
 
 	test("--member with no matches returns empty list", async () => {
@@ -324,7 +324,7 @@ describe("handleStandupList", () => {
 
 		await handleStandupList({ member: "U_NONEXISTENT" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: unknown[];
 			metadata: { count: number };
 		};
@@ -337,12 +337,12 @@ describe("handleStandupList", () => {
 		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP, second]));
 		await handleStandupList({ brief: true, name: "daily" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<Record<string, unknown>>;
 		};
 		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]!.id).toBe(42);
-		expect(envelope.data[0]!.questions).toBeUndefined();
+		expect(envelope.data[0]?.id).toBe(42);
+		expect(envelope.data[0]?.questions).toBeUndefined();
 	});
 	test("--limit caps results after filters", async () => {
 		const items = [
@@ -353,13 +353,13 @@ describe("handleStandupList", () => {
 		mockGet.mockImplementation(() => Promise.resolve(items));
 		await handleStandupList({ limit: "2" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<{ id: number }>;
 			metadata: { count: number };
 		};
 		expect(envelope.data).toHaveLength(2);
-		expect(envelope.data[0]!.id).toBe(1);
-		expect(envelope.data[1]!.id).toBe(2);
+		expect(envelope.data[0]?.id).toBe(1);
+		expect(envelope.data[1]?.id).toBe(2);
 		expect(envelope.metadata.count).toBe(2);
 	});
 
@@ -382,13 +382,17 @@ describe("handleStandupList", () => {
 		mockGet.mockImplementation(() => Promise.resolve(items));
 		await handleStandupList({ name: "daily", limit: "1", brief: true }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: Array<Record<string, unknown>>;
 			metadata: { count: number };
 		};
 		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]!.id).toBe(1);
-		expect(Object.keys(envelope.data[0]!).sort()).toEqual(["channel", "id", "name"]);
+		expect(envelope.data[0]?.id).toBe(1);
+		expect(Object.keys(envelope.data[0] as Record<string, unknown>).sort()).toEqual([
+			"channel",
+			"id",
+			"name",
+		]);
 	});
 });
 
@@ -401,7 +405,7 @@ describe("handleStandupGet", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v1/standups/42");
 		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			ok: boolean;
 			data: { id: number };
 		};
@@ -412,7 +416,7 @@ describe("handleStandupGet", () => {
 	test("normalizes wait_time from seconds to minutes", async () => {
 		await handleStandupGet("42", GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: { wait_time: number };
 		};
 		expect(envelope.data.wait_time).toBe(10);
@@ -428,7 +432,7 @@ describe("handleStandupCreate", () => {
 		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
 
 		expect(mockPost).toHaveBeenCalledTimes(1);
-		const [path, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [path, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(path).toBe("/v1/standups");
 		expect(body.name).toBe("Daily");
 		expect(body.channel).toBe("#eng");
@@ -437,21 +441,21 @@ describe("handleStandupCreate", () => {
 	test("uses default time 10:00 when --time omitted", async () => {
 		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.time).toBe("10:00:00");
 	});
 
 	test("uses default weekdays when --days omitted", async () => {
 		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.days).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
 	});
 
 	test("with only --name and --questions uses sensible defaults for time and days", async () => {
 		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.time).toBe("10:00:00");
 		expect(body.days).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
 		expect(body.questions).toEqual([{ question: "What did you do?" }]);
@@ -460,7 +464,7 @@ describe("handleStandupCreate", () => {
 	test("returns receipt with operation=created and undo=delete command", async () => {
 		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { operation: string; undo: string };
 		};
 		expect(envelope.metadata.operation).toBe("created");
@@ -470,21 +474,21 @@ describe("handleStandupCreate", () => {
 	test("validates and appends :00 to time", async () => {
 		await handleStandupCreate({ ...MINIMAL_OPTS, time: "09:30" }, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.time).toBe("09:30:00");
 	});
 
 	test("passes timezone through", async () => {
 		await handleStandupCreate({ ...MINIMAL_OPTS, timezone: "Europe/London" }, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.timezone).toBe("Europe/London");
 	});
 
 	test("splits and validates days", async () => {
 		await handleStandupCreate({ ...MINIMAL_OPTS, days: "Mon,Wed,Fri" }, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.days).toEqual(["Mon", "Wed", "Fri"]);
 	});
 
@@ -497,7 +501,7 @@ describe("handleStandupCreate", () => {
 			GLOBAL_OPTS,
 		);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.questions).toEqual([
 			{ question: "What did you do?" },
 			{ question: "Any blockers?" },
@@ -507,7 +511,7 @@ describe("handleStandupCreate", () => {
 	test("splits users and sets sync_channel_members=false", async () => {
 		await handleStandupCreate({ ...MINIMAL_OPTS, users: "U1,U2,U3" }, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.users).toEqual(["U1", "U2", "U3"]);
 		expect(body.sync_channel_members).toBe(false);
 	});
@@ -515,20 +519,20 @@ describe("handleStandupCreate", () => {
 	test("sets sync_channel_members=true when no users specified", async () => {
 		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.sync_channel_members).toBe(true);
 	});
 
 	test("passes waitTime as number", async () => {
 		await handleStandupCreate({ ...MINIMAL_OPTS, waitTime: "15" }, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.wait_time).toBe(15);
 	});
 
 	test("accepts Slack-style user IDs", async () => {
 		await handleStandupCreate({ ...MINIMAL_OPTS, users: "U123,U456" }, GLOBAL_OPTS);
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.users).toEqual(["U123", "U456"]);
 	});
 
@@ -566,7 +570,7 @@ describe("handleStandupUpdate", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v1/standups/42");
 		// Second call: PATCH
 		expect(mockPatch).toHaveBeenCalledTimes(1);
-		const [path, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [path, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(path).toBe("/v1/standups/42");
 		expect(body.name).toBe("New Name");
 	});
@@ -574,7 +578,7 @@ describe("handleStandupUpdate", () => {
 	test("returns receipt with operation=updated and undo command", async () => {
 		await handleStandupUpdate("42", { name: "New Name" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { operation: string; undo: string };
 		};
 		expect(envelope.metadata.operation).toBe("updated");
@@ -585,32 +589,32 @@ describe("handleStandupUpdate", () => {
 	test("validates and appends :00 to time in body", async () => {
 		await handleStandupUpdate("42", { time: "14:00" }, GLOBAL_OPTS);
 
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.time).toBe("14:00:00");
 	});
 
 	test("splits and validates days in body", async () => {
 		await handleStandupUpdate("42", { days: "Tue,Thu" }, GLOBAL_OPTS);
 
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.days).toEqual(["Tue", "Thu"]);
 	});
 
 	test("passes channel in PATCH body", async () => {
 		await handleStandupUpdate("42", { channel: "#new" }, GLOBAL_OPTS);
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.channel).toBe("#new");
 	});
 
 	test("passes timezone in PATCH body", async () => {
 		await handleStandupUpdate("42", { timezone: "US/Pacific" }, GLOBAL_OPTS);
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.timezone).toBe("US/Pacific");
 	});
 
 	test("passes waitTime as number in PATCH body", async () => {
 		await handleStandupUpdate("42", { waitTime: "10" }, GLOBAL_OPTS);
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.wait_time).toBe(10);
 	});
 
@@ -644,7 +648,7 @@ describe("handleStandupUpdate", () => {
 	test("only includes non-undefined options in body", async () => {
 		await handleStandupUpdate("42", { name: "New" }, GLOBAL_OPTS);
 
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body).toEqual({ name: "New" });
 	});
 
@@ -655,14 +659,14 @@ describe("handleStandupUpdate", () => {
 			GLOBAL_OPTS,
 		);
 
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body).toEqual({ timezone: "Europe/Berlin", days: ["Mon", "Wed", "Fri"] });
 	});
 
 	test("sends time + timezone without days in PATCH body", async () => {
 		await handleStandupUpdate("42", { time: "09:00", timezone: "Asia/Tokyo" }, GLOBAL_OPTS);
 
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body).toEqual({ time: "09:00:00", timezone: "Asia/Tokyo" });
 	});
 
@@ -681,7 +685,7 @@ describe("handleStandupUpdate", () => {
 			GLOBAL_OPTS,
 		);
 
-		const [path, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [path, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(path).toBe("/v1/standups/42");
 		expect(body).toEqual({
 			name: "All Fields",
@@ -697,14 +701,14 @@ describe("handleStandupUpdate", () => {
 
 	test("passes users as validated Slack ID list in PATCH body", async () => {
 		await handleStandupUpdate("42", { users: "U111,U222,U333" }, GLOBAL_OPTS);
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.users).toEqual(["U111", "U222", "U333"]);
 		expect(body.sync_channel_members).toBe(false);
 	});
 
 	test("users-only update does not include other fields", async () => {
 		await handleStandupUpdate("42", { users: "U111" }, GLOBAL_OPTS);
-		const [, body] = mockPatch.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body).toEqual({ users: ["U111"], sync_channel_members: false });
 	});
 });
@@ -717,7 +721,7 @@ describe("handleStandupReplace", () => {
 
 		expect(mockGet).toHaveBeenCalledWith("/v1/standups/42");
 		expect(mockPut).toHaveBeenCalledTimes(1);
-		const [path, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [path, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(path).toBe("/v1/standups/42");
 		expect(body.name).toBe("Replaced");
 		expect(body.channel).toBe("#new");
@@ -725,7 +729,7 @@ describe("handleStandupReplace", () => {
 
 	test("validates and appends :00 to time in PUT body", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c", time: "14:00" }, GLOBAL_OPTS);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.time).toBe("14:00:00");
 	});
 
@@ -735,13 +739,13 @@ describe("handleStandupReplace", () => {
 			{ name: "R", channel: "#c", timezone: "US/Eastern" },
 			GLOBAL_OPTS,
 		);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.timezone).toBe("US/Eastern");
 	});
 
 	test("splits and validates days in PUT body", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c", days: "Mon,Fri" }, GLOBAL_OPTS);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.days).toEqual(["Mon", "Fri"]);
 	});
 
@@ -751,20 +755,20 @@ describe("handleStandupReplace", () => {
 			{ name: "R", channel: "#c", questions: '["Q1"]' },
 			GLOBAL_OPTS,
 		);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.questions).toEqual([{ question: "Q1" }]);
 	});
 
 	test("splits users and sets sync_channel_members=false", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c", users: "U1,U2" }, GLOBAL_OPTS);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.users).toEqual(["U1", "U2"]);
 		expect(body.sync_channel_members).toBe(false);
 	});
 
 	test("passes waitTime as number in PUT body", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c", waitTime: "5" }, GLOBAL_OPTS);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.wait_time).toBe(5);
 	});
 
@@ -793,7 +797,7 @@ describe("handleStandupReplace", () => {
 	test("returns receipt with operation=updated and undo=replace command", async () => {
 		await handleStandupReplace("42", { name: "Replaced", channel: "#new" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { operation: string; undo: string };
 		};
 		expect(envelope.metadata.operation).toBe("updated");
@@ -802,19 +806,19 @@ describe("handleStandupReplace", () => {
 
 	test("PUT body always includes time (uses default 10:00 when not provided)", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.time).toBe("10:00:00");
 	});
 
 	test("PUT body always includes days (uses default weekdays when not provided)", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.days).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
 	});
 
 	test("PUT body carries forward existing questions when --questions not provided", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.questions).toBeDefined();
 		expect(Array.isArray(body.questions)).toBe(true);
 	});
@@ -823,19 +827,27 @@ describe("handleStandupReplace", () => {
 		const customStandup = {
 			...RAW_STANDUP,
 			questions: [
-				{ ...RAW_STANDUP.questions[0]!, id: 101, text: "What did you do?" },
-				{ ...RAW_STANDUP.questions[0]!, id: 102, text: "Any blockers?" },
+				{
+					...(RAW_STANDUP.questions[0] as (typeof RAW_STANDUP.questions)[number]),
+					id: 101,
+					text: "What did you do?",
+				},
+				{
+					...(RAW_STANDUP.questions[0] as (typeof RAW_STANDUP.questions)[number]),
+					id: 102,
+					text: "Any blockers?",
+				},
 			],
 		};
 		mockGet.mockImplementation(() => Promise.resolve(customStandup));
 
 		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
 
-		const [, body] = mockPut.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
 		const questions = body.questions as Array<{ id: number; text: string }>;
 		expect(questions).toHaveLength(2);
-		expect(questions[0]!.text).toBe("What did you do?");
-		expect(questions[1]!.text).toBe("Any blockers?");
+		expect(questions[0]?.text).toBe("What did you do?");
+		expect(questions[1]?.text).toBe("Any blockers?");
 	});
 });
 
@@ -864,7 +876,7 @@ describe("handleStandupDelete", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v1/standups/42");
 		expect(mockDelete).toHaveBeenCalledWith("/v1/standups/42");
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { operation: string; undo: string };
 		};
 		expect(envelope.metadata.operation).toBe("deleted");
@@ -879,7 +891,7 @@ describe("handleStandupDuplicate", () => {
 		await handleStandupDuplicate("42", { name: "Copy" }, GLOBAL_OPTS);
 
 		expect(mockPost).toHaveBeenCalledTimes(1);
-		const [path, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [path, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(path).toBe("/v1/standups/42/duplicate");
 		expect(body.name).toBe("Copy");
 	});
@@ -887,7 +899,7 @@ describe("handleStandupDuplicate", () => {
 	test("returns receipt with operation=duplicated and undo=delete new standup", async () => {
 		await handleStandupDuplicate("42", { name: "Copy" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { operation: string; undo: string };
 		};
 		expect(envelope.metadata.operation).toBe("duplicated");
@@ -904,7 +916,7 @@ describe("handleStandupStart", () => {
 
 		expect(mockGet).toHaveBeenCalledWith("/v1/standups/42");
 		expect(mockPost).toHaveBeenCalledTimes(1);
-		const [path, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [path, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(path).toBe("/v1/standups/42/start");
 		expect(body).toEqual({});
 	});
@@ -913,7 +925,7 @@ describe("handleStandupStart", () => {
 		mockPost.mockImplementation(() => Promise.resolve("ok"));
 		await handleStandupStart("42", {}, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { operation: string; undo: string | null };
 		};
 		expect(envelope.metadata.operation).toBe("started");
@@ -924,7 +936,7 @@ describe("handleStandupStart", () => {
 		mockPost.mockImplementation(() => Promise.resolve("ok"));
 		await handleStandupStart("42", { users: "U1,U2" }, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.users).toEqual(["U1", "U2"]);
 	});
 
@@ -932,7 +944,7 @@ describe("handleStandupStart", () => {
 		mockPost.mockImplementation(() => Promise.resolve("ok"));
 		await handleStandupStart("42", { users: "U123,U456" }, GLOBAL_OPTS);
 
-		const [, body] = mockPost.mock.calls[0]! as [string, Record<string, unknown>];
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.users).toEqual(["U123", "U456"]);
 	});
 
@@ -951,7 +963,7 @@ describe("handleStandupStart", () => {
 		mockPost.mockImplementation(() => Promise.resolve("ok"));
 		await handleStandupStart("42", {}, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]![0] as {
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			data: { id: number; name: string };
 		};
 		expect(envelope.data.id).toBe(42);

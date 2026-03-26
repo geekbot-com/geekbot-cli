@@ -11,7 +11,7 @@ describe("TimelineReportSchema (NORM-03)", () => {
 			member: { id: "U123", username: "jane", realname: "Jane", profileImg: "http://img.png" },
 		});
 		expect(report.member).not.toBeNull();
-		expect(report.member!.profile_img).toBe("http://img.png");
+		expect(report.member?.profile_img).toBe("http://img.png");
 	});
 
 	test("converts timestamp to ISO created_at string", () => {
@@ -60,7 +60,7 @@ describe("SubmittedReportSchema (NORM-03)", () => {
 			member: { id: "U123", username: "jane", realname: "Jane", profileImg: "http://img.png" },
 		});
 		expect(report.member).not.toBeNull();
-		expect(report.member!.profile_img).toBe("http://img.png");
+		expect(report.member?.profile_img).toBe("http://img.png");
 	});
 
 	test("member is null when not present", () => {

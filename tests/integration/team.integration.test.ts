@@ -21,7 +21,7 @@ describe.skipIf(!API_KEY)("Team Integration", () => {
 		expect(Array.isArray(team.users)).toBe(true);
 
 		if (team.users.length > 0) {
-			const user = team.users[0]!;
+			const user = team.users[0] as (typeof team.users)[number];
 			expect(typeof user.id).toBe("string");
 			expect(typeof user.username).toBe("string");
 			expect(typeof user.email).toBe("string");

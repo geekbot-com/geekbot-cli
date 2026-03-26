@@ -28,7 +28,7 @@ async function runCli(args: string[]): Promise<{
 
 describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 	test("me show outputs valid JSON envelope", async () => {
-		const { stdout, exitCode } = await runCli(["me", "show", "--api-key", API_KEY!]);
+		const { stdout, exitCode } = await runCli(["me", "show", "--api-key", API_KEY as string]);
 
 		expect(exitCode).toBe(0);
 
@@ -43,7 +43,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 	}, 15000);
 
 	test("me teams outputs valid JSON envelope with list", async () => {
-		const { stdout, exitCode } = await runCli(["me", "teams", "--api-key", API_KEY!]);
+		const { stdout, exitCode } = await runCli(["me", "teams", "--api-key", API_KEY as string]);
 
 		expect(exitCode).toBe(0);
 
@@ -54,7 +54,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 	}, 15000);
 
 	test("team list outputs valid JSON envelope", async () => {
-		const { stdout, exitCode } = await runCli(["team", "list", "--api-key", API_KEY!]);
+		const { stdout, exitCode } = await runCli(["team", "list", "--api-key", API_KEY as string]);
 
 		expect(exitCode).toBe(0);
 
@@ -66,7 +66,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 	}, 15000);
 
 	test("standup list outputs valid JSON envelope", async () => {
-		const { stdout, exitCode } = await runCli(["standup", "list", "--api-key", API_KEY!]);
+		const { stdout, exitCode } = await runCli(["standup", "list", "--api-key", API_KEY as string]);
 
 		expect(exitCode).toBe(0);
 
@@ -95,7 +95,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			"get",
 			"999999999",
 			"--api-key",
-			API_KEY!,
+			API_KEY as string,
 		]);
 
 		expect(exitCode).toBe(3); // ExitCode.NOT_FOUND
@@ -111,7 +111,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			"get",
 			"999999999",
 			"--api-key",
-			API_KEY!,
+			API_KEY as string,
 			"--debug",
 		]);
 
@@ -132,7 +132,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			"--questions",
 			'["Original question?"]',
 			"--api-key",
-			API_KEY!,
+			API_KEY as string,
 		]);
 
 		if (createResult.exitCode !== 0) {
@@ -151,7 +151,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 				"--questions",
 				'["Updated question?","Second question?"]',
 				"--api-key",
-				API_KEY!,
+				API_KEY as string,
 			]);
 
 			expect(updateResult.exitCode).toBe(0);
@@ -160,14 +160,27 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			expect(updateEnvelope.ok).toBe(true);
 
 			// Verify questions were actually changed
-			const getResult = await runCli(["standup", "get", String(standupId), "--api-key", API_KEY!]);
+			const getResult = await runCli([
+				"standup",
+				"get",
+				String(standupId),
+				"--api-key",
+				API_KEY as string,
+			]);
 
 			expect(getResult.exitCode).toBe(0);
 			const getEnvelope = JSON.parse(getResult.stdout);
 			const questions = getEnvelope.data.questions.map((q: { text: string }) => q.text);
 			expect(questions).toEqual(["Updated question?", "Second question?"]);
 		} finally {
-			await runCli(["standup", "delete", String(standupId), "--yes", "--api-key", API_KEY!]);
+			await runCli([
+				"standup",
+				"delete",
+				String(standupId),
+				"--yes",
+				"--api-key",
+				API_KEY as string,
+			]);
 		}
 	}, 30000);
 
@@ -183,7 +196,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			"--questions",
 			'["Delete test?"]',
 			"--api-key",
-			API_KEY!,
+			API_KEY as string,
 		]);
 
 		if (createResult.exitCode !== 0) {
@@ -200,7 +213,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			String(standupId),
 			"--yes",
 			"--api-key",
-			API_KEY!,
+			API_KEY as string,
 		]);
 
 		expect(deleteResult.exitCode).toBe(0);
@@ -209,7 +222,13 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 		expect(deleteEnvelope.ok).toBe(true);
 
 		// Verify it's gone
-		const getResult = await runCli(["standup", "get", String(standupId), "--api-key", API_KEY!]);
+		const getResult = await runCli([
+			"standup",
+			"get",
+			String(standupId),
+			"--api-key",
+			API_KEY as string,
+		]);
 
 		expect(getResult.exitCode).toBe(3); // NOT_FOUND
 	}, 30000);
@@ -226,7 +245,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			"--questions",
 			'["Delete confirm test?"]',
 			"--api-key",
-			API_KEY!,
+			API_KEY as string,
 		]);
 
 		if (createResult.exitCode !== 0) {
@@ -242,7 +261,7 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 				"delete",
 				String(standupId),
 				"--api-key",
-				API_KEY!,
+				API_KEY as string,
 			]);
 
 			expect(deleteResult.exitCode).toBe(6); // ExitCode.VALIDATION
@@ -253,7 +272,14 @@ describe.skipIf(!API_KEY)("E2E CLI Integration", () => {
 			expect(deleteEnvelope.error.suggestion).toContain("--yes");
 		} finally {
 			// Clean up the standup
-			await runCli(["standup", "delete", String(standupId), "--yes", "--api-key", API_KEY!]);
+			await runCli([
+				"standup",
+				"delete",
+				String(standupId),
+				"--yes",
+				"--api-key",
+				API_KEY as string,
+			]);
 		}
 	}, 30000);
 });

@@ -55,9 +55,9 @@ describe("PollSchema", () => {
 	test("parses questions array with all fields", () => {
 		const poll = PollSchema.parse(samplePoll);
 		expect(poll.questions).toHaveLength(1);
-		expect(poll.questions[0]!.text).toBe("How was your day?");
-		expect(poll.questions[0]!.answer_choices).toEqual(["Great", "Good", "Okay"]);
-		expect(poll.questions[0]!.add_own_options).toBe(true);
+		expect(poll.questions[0]?.text).toBe("How was your day?");
+		expect(poll.questions[0]?.answer_choices).toEqual(["Great", "Good", "Okay"]);
+		expect(poll.questions[0]?.add_own_options).toBe(true);
 	});
 
 	test("accepts null recurrence", () => {
@@ -73,7 +73,7 @@ describe("PollSchema", () => {
 	test("parses users array as FullUser objects", () => {
 		const poll = PollSchema.parse(samplePoll);
 		expect(poll.users).toHaveLength(1);
-		expect(poll.users[0]!.username).toBe("jane");
+		expect(poll.users[0]?.username).toBe("jane");
 	});
 });
 
@@ -140,22 +140,22 @@ describe("PollVotesResponseSchema", () => {
 
 	test("parses vote answers with string catergory_id", () => {
 		const response = PollVotesResponseSchema.parse(sampleVotesResponse);
-		const answers = response.questions[0]!.results[0]!.answers;
-		expect(answers[0]!.catergory_id).toBe("uncategorized");
-		expect(answers[0]!.votes).toBe(3);
+		const answers = response.questions[0]?.results[0]?.answers;
+		expect(answers[0]?.catergory_id).toBe("uncategorized");
+		expect(answers[0]?.votes).toBe(3);
 	});
 
 	test("parses vote answers with numeric catergory_id", () => {
 		const response = PollVotesResponseSchema.parse(sampleVotesResponse);
-		const answers = response.questions[0]!.results[0]!.answers;
-		expect(answers[1]!.catergory_id).toBe(1);
+		const answers = response.questions[0]?.results[0]?.answers;
+		expect(answers[1]?.catergory_id).toBe(1);
 	});
 
 	test("parses optional users on answers", () => {
 		const response = PollVotesResponseSchema.parse(sampleVotesResponse);
-		const answers = response.questions[0]!.results[0]!.answers;
-		expect(answers[0]!.users).toHaveLength(1);
-		expect(answers[1]!.users).toBeUndefined();
+		const answers = response.questions[0]?.results[0]?.answers;
+		expect(answers[0]?.users).toHaveLength(1);
+		expect(answers[1]?.users).toBeUndefined();
 	});
 
 	test("accepts null date on results", () => {
@@ -163,7 +163,7 @@ describe("PollVotesResponseSchema", () => {
 			...sampleVotesResponse,
 			questions: [
 				{
-					...sampleVotesResponse.questions[0]!,
+					...(sampleVotesResponse.questions[0] as (typeof sampleVotesResponse.questions)[number]),
 					results: [
 						{
 							date: null,
@@ -174,7 +174,7 @@ describe("PollVotesResponseSchema", () => {
 			],
 		};
 		const response = PollVotesResponseSchema.parse(modified);
-		expect(response.questions[0]!.results[0]!.date).toBeNull();
+		expect(response.questions[0]?.results[0]?.date).toBeNull();
 	});
 
 	test("accepts null date on instances", () => {
@@ -183,6 +183,6 @@ describe("PollVotesResponseSchema", () => {
 			instances: [{ id: 100, date: null, answer_count: 0 }],
 		};
 		const response = PollVotesResponseSchema.parse(modified);
-		expect(response.instances[0]!.date).toBeNull();
+		expect(response.instances[0]?.date).toBeNull();
 	});
 });
