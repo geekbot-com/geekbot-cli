@@ -30,6 +30,7 @@ EOF
   exit 2
 fi
 
-# All good — embed version as plain string (safe: version output is alphanumeric + dots)
-echo "{\"ok\":true,\"version\":\"${VERSION_OUTPUT}\",\"message\":\"geekbot CLI is installed and authenticated\"}"
+# All good — sanitize version to alphanumeric + dots before embedding in JSON
+SAFE_VERSION=$(echo "$VERSION_OUTPUT" | tr -cd '[:alnum:].')
+echo "{\"ok\":true,\"version\":\"${SAFE_VERSION}\",\"message\":\"geekbot CLI is installed and authenticated\"}"
 exit 0
