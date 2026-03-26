@@ -4,10 +4,12 @@ import { join } from "node:path";
 
 describe("GitHub Actions pinned to commit SHAs", () => {
 	const workflowDir = join(import.meta.dir, "../../.github/workflows");
-	const workflowFiles = readdirSync(workflowDir).filter((f) => f.endsWith(".yml"));
+	const workflowFiles = readdirSync(workflowDir).filter(
+		(f) => f.endsWith(".yml") || f.endsWith(".yaml"),
+	);
 
 	// Matches `uses: owner/repo@ref` where ref is NOT a 40-char hex SHA
-	const mutableRefPattern = /uses:\s+[\w-]+\/[\w-]+@(?![0-9a-f]{40}\b)/;
+	const mutableRefPattern = /uses:\s+[\w.-]+\/[\w.-]+@(?![0-9a-f]{40}\b)/;
 
 	for (const file of workflowFiles) {
 		test(`${file} pins all actions to full commit SHAs`, () => {
