@@ -66,6 +66,19 @@ also fails, report the error. If `retryable: false`: report immediately.
 Typically a duplicate name or concurrent modification. For duplicate names,
 suggest a different name. For concurrent modification, re-fetch and retry.
 
+### Exit 9 with `schema_validation_error` — API response mismatch
+
+If the error code is `schema_validation_error`, the API returned data in an
+unexpected format that doesn't match the CLI's schema. This is **not** a user
+input problem — don't ask the user to change their command.
+
+Report the error clearly and suggest:
+- The CLI version may be outdated (suggest updating)
+- The Geekbot API may have changed
+- If persistent, report it as a bug
+
+Do **not** retry — the same response will fail the same way.
+
 ### Exits 1, 2, 9 — Report clearly
 
 Report `error.message` to the user. For exit 2 (usage), check the command

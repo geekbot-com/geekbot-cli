@@ -128,7 +128,7 @@ describe("handleError", () => {
 		} catch {}
 		const envelope = JSON.parse(stdoutOutput.trim());
 		expect(envelope.error.code).toBe("schema_validation_error");
-		expect(exitCode).toBe(ExitCode.VALIDATION);
+		expect(exitCode).toBe(ExitCode.API_ERROR);
 	});
 
 	test("ZodError message summarises field-level issues", () => {

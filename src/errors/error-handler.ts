@@ -35,7 +35,7 @@ export function handleError(error: unknown, debug: boolean = false): never {
 			process.stderr.write(`[debug] ZodError issues: ${JSON.stringify(error.issues)}\n`);
 		}
 
-		process.exit(ExitCode.VALIDATION);
+		process.exit(ExitCode.API_ERROR);
 	}
 
 	if (error instanceof CliError) {

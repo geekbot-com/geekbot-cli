@@ -243,6 +243,7 @@ exit code.
 | 6 | Validation | Show `error.message`, help the user fix the input. |
 | 7 | Network | If `error.retryable` is true, retry once after 2s silently. If it fails again, report. |
 | 8 | Conflict | Explain the conflict (e.g., duplicate name). Suggest resolution. |
+| 9 | Schema validation (`schema_validation_error`) | API response didn't match expected format. Don't ask user to fix input — suggest updating CLI or reporting a bug. |
 | 1, 2, 9 | General / usage / API | Report `error.message` to the user clearly. |
 
 **Never retry** errors where `retryable` is false.
