@@ -37,30 +37,6 @@ export function validateTimeFormat(value: string): string {
 }
 
 /**
- * Validate that a comma-separated string contains only valid positive integers.
- * Returns the parsed number array. Rejects NaN, decimals, zero, and negatives.
- */
-export function validateNumericList(value: string, label: string): number[] {
-	const parts = value.split(",");
-	const result: number[] = [];
-	for (const part of parts) {
-		const trimmed = part.trim();
-		const num = Number(trimmed);
-		if (!Number.isSafeInteger(num) || num <= 0) {
-			throw new CliError(
-				`Invalid ${label}: "${trimmed}" is not a positive integer. All values must be numeric.`,
-				"validation_error",
-				ExitCode.VALIDATION,
-				false,
-				`Provide comma-separated numeric IDs, e.g.: --users "123,456,789"`,
-			);
-		}
-		result.push(num);
-	}
-	return result;
-}
-
-/**
  * Validate that a string is a Slack-style user ID (e.g. "UHNM44125", "U08LXSA31BJ").
  * Slack IDs start with an uppercase letter followed by uppercase alphanumeric characters.
  */

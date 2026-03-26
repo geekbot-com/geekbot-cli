@@ -1,14 +1,28 @@
 import { describe, expect, test } from "bun:test";
 import { CliError } from "../../src/errors/cli-error.ts";
+import * as validationModule from "../../src/utils/validation.ts";
 import {
 	validateDayAbbreviations,
 	validateNumericId,
-	validateNumericList,
 	validateSlackId,
 	validateSlackIdList,
 	validateTimeFormat,
 	validateWaitTime,
 } from "../../src/utils/validation.ts";
+
+describe("validation module public API", () => {
+	test("exports only functions used by production code", () => {
+		const exportedNames = Object.keys(validationModule).sort();
+		expect(exportedNames).toEqual([
+			"validateDayAbbreviations",
+			"validateNumericId",
+			"validateSlackId",
+			"validateSlackIdList",
+			"validateTimeFormat",
+			"validateWaitTime",
+		]);
+	});
+});
 
 describe("validateNumericId", () => {
 	test("returns number for valid positive integer string", () => {
@@ -58,70 +72,6 @@ describe("validateNumericId", () => {
 
 	test("throws CliError for integer beyond MAX_SAFE_INTEGER", () => {
 		expect(() => validateNumericId("9007199254740993")).toThrow(CliError);
-	});
-});
-
-describe("validateNumericList", () => {
-	test("returns number array for valid comma-separated integers", () => {
-		expect(validateNumericList("1,2,3", "user ID")).toEqual([1, 2, 3]);
-	});
-
-	test("returns single-element array for single value", () => {
-		expect(validateNumericList("42", "user ID")).toEqual([42]);
-	});
-
-	test("handles whitespace around values", () => {
-		expect(validateNumericList("1, 2, 3", "user ID")).toEqual([1, 2, 3]);
-	});
-
-	test("throws CliError for non-numeric values like Slack IDs", () => {
-		expect(() => validateNumericList("U123,U456", "user ID")).toThrow(CliError);
-	});
-
-	test("throws CliError when any value is non-numeric", () => {
-		expect(() => validateNumericList("1,foo,3", "user ID")).toThrow(CliError);
-	});
-
-	test("throws CliError for decimal values", () => {
-		expect(() => validateNumericList("1.5,2", "user ID")).toThrow(CliError);
-	});
-
-	test("throws CliError for zero", () => {
-		expect(() => validateNumericList("0", "user ID")).toThrow(CliError);
-	});
-
-	test("throws CliError for negative values", () => {
-		expect(() => validateNumericList("-1,2", "user ID")).toThrow(CliError);
-	});
-
-	test("error message includes the invalid value", () => {
-		try {
-			validateNumericList("U123,U456", "user ID");
-		} catch (e) {
-			expect((e as CliError).message).toContain("U123");
-			expect((e as CliError).message).toContain("user ID");
-		}
-	});
-
-	test("error has exitCode 6 (VALIDATION)", () => {
-		try {
-			validateNumericList("abc", "user ID");
-		} catch (e) {
-			expect((e as CliError).exitCode).toBe(6);
-			expect((e as CliError).code).toBe("validation_error");
-		}
-	});
-
-	test("suggestion mentions numeric IDs", () => {
-		try {
-			validateNumericList("abc", "user ID");
-		} catch (e) {
-			expect((e as CliError).suggestion).toContain("numeric");
-		}
-	});
-
-	test("throws CliError for value beyond MAX_SAFE_INTEGER", () => {
-		expect(() => validateNumericList("9007199254740993", "user ID")).toThrow(CliError);
 	});
 });
 

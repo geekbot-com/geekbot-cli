@@ -1,13 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { isTTY } from "../../src/utils/tty.ts";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
-describe("tty utilities", () => {
-	test("isTTY() returns a boolean", () => {
-		expect(typeof isTTY()).toBe("boolean");
-	});
-
-	test("isTTY() returns false in non-TTY context (test/CI)", () => {
-		// In test/CI environments, stdout is piped not connected to a terminal
-		expect(isTTY()).toBe(false);
+describe("tty module", () => {
+	test("src/utils/tty.ts should not exist (dead code — no production imports)", () => {
+		const ttyPath = join(import.meta.dir, "../../src/utils/tty.ts");
+		expect(existsSync(ttyPath)).toBe(false);
 	});
 });
