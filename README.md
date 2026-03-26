@@ -4,7 +4,7 @@
 [![CI](https://github.com/geekbot-com/geekbot-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/geekbot-com/geekbot-cli/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A cross-platform CLI tool for interacting with the Geekbot API, designed for AI agents and humans. Built with Bun and TypeScript.
+A cross-platform CLI tool for interacting with the [Geekbot](https://geekbot.com) API, designed for AI agents and humans. Built with Bun and TypeScript.
 
 **Why geekbot-cli?**
 

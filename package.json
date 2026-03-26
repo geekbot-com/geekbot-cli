@@ -1,6 +1,6 @@
 {
 	"name": "geekbot-cli",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "CLI tool for managing Geekbot standups, reports, and polls — designed for AI agents and humans",
 	"type": "module",
 	"license": "MIT",
@@ -12,6 +12,7 @@
 		"geekbot": "./src/cli/index.ts"
 	},
 	"files": [
+		"README.md",
 		"src/",
 		"skills/",
 		"scripts/"
