@@ -29,8 +29,8 @@ Before any operation, verify the CLI is available and authenticated.
 Run `check-cli.sh` on first invocation. If it fails:
 
 - **CLI not found**: Install via `npm install -g geekbot-cli` (requires
-  Bun >= 1.0 runtime). Alternatively, use `npx geekbot-cli` for one-off
-  commands without global install.
+  Bun >= 1.3.5 runtime). Note: `npx geekbot-cli` also requires Bun on
+  PATH — it is not a Node.js fallback.
 - **Auth not configured**: Guide the user to run `geekbot auth setup`
   which stores the API key in the OS keychain. Alternatively they can
   set `GEEKBOT_API_KEY` as an environment variable.

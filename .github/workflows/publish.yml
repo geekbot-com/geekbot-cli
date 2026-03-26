@@ -4,7 +4,24 @@ on:
     types: [published]
 
 jobs:
+  ci:
+    runs-on: ubuntu-latest
+    container:
+      image: oven/bun:1.3.11
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - run: bun install
+      - run: bun run lint
+      - run: bunx tsc --noEmit
+      - name: Run tests
+        run: |
+          bun test tests/auth/ tests/http/ tests/output/ tests/utils/ tests/schemas/
+          bun test tests/errors/error-handler.test.ts tests/errors/cli-error.test.ts tests/errors/not-found-helper.test.ts tests/errors/exit-codes.test.ts
+          bun test tests/errors/error-handler-output.test.ts
+          bun test tests/handlers/ tests/cli/ tests/ci/
+
   publish:
+    needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -16,12 +33,6 @@ jobs:
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-
-      - run: bun install
-
-      - run: bun test
 
       - run: npm publish --provenance
         env:

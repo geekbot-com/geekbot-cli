@@ -8,9 +8,60 @@ Manage standups, reports, polls, teams, and user profiles programmatically with 
 
 ### Prerequisites
 
-- [Bun](https://bun.sh/) runtime (v1.0 or later)
+- [Bun](https://bun.sh/) runtime (v1.3.5 or later)
 
-### Setup
+### Install via npm
+
+```shell
+npm install -g geekbot-cli
+```
+
+This installs the `geekbot` binary globally. The postinstall script checks for Bun and prints a hint about skill registration.
+
+> **Note:** `npx geekbot-cli` also requires Bun on PATH — the CLI uses a `#!/usr/bin/env bun` shebang, so it is not a Node.js fallback.
+
+Verify the installation:
+
+```shell
+geekbot --version
+# 0.2.0
+```
+
+### Register the AI agent skill
+
+To register the Geekbot skill with your AI coding agents (Claude Code, Cursor, Windsurf, Copilot, etc.):
+
+```shell
+npx skills add geekbot-com/geekbot-cli
+```
+
+This uses the [Vercel Skills](https://github.com/vercel-labs/skills) ecosystem to detect installed agents and register the skill with all of them.
+
+<details>
+<summary>Manual skill installation (without npx skills)</summary>
+
+If you prefer not to use `npx skills`, copy the `skills/geekbot/` directory into your agent's skill directory:
+
+```shell
+# Claude Code
+cp -r node_modules/geekbot-cli/skills/geekbot ~/.claude/skills/geekbot
+
+# Universal (.agents/skills/ — works with Cursor, Codex, Gemini CLI, etc.)
+mkdir -p .agents/skills
+cp -r node_modules/geekbot-cli/skills/geekbot .agents/skills/geekbot
+
+# Windsurf
+cp -r node_modules/geekbot-cli/skills/geekbot ~/.codeium/windsurf/skills/geekbot
+
+# Roo Code
+cp -r node_modules/geekbot-cli/skills/geekbot ~/.roo/skills/geekbot
+```
+
+The skill directory must contain `SKILL.md` and its sibling reference files (`cli-commands.md`, `manager-workflows.md`, etc.) — they are loaded by relative path.
+
+</details>
+
+### Install from source (for development)
 
 ```shell
 git clone https://github.com/geekbot-com/geekbot-cli.git
@@ -19,12 +70,14 @@ bun install
 bun link
 ```
 
-Verify the installation:
+### Platform support
 
-```shell
-geekbot --version
-# 0.1.0
-```
+| Platform | Status |
+|----------|--------|
+| macOS (x64, ARM64) | Supported |
+| Linux (x64, ARM64) | Supported |
+| Windows (x64) | Supported (requires Bun >= 1.3.5) |
+| Windows (ARM64) | Not supported (Bun does not yet ship ARM64 Windows binaries) |
 
 ## Authentication
 

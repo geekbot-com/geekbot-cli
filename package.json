@@ -1,6 +1,7 @@
 {
 	"name": "geekbot-cli",
-	"version": "0.1.0",
+	"version": "0.2.0",
+	"description": "CLI tool for managing Geekbot standups, reports, and polls — designed for AI agents and humans",
 	"type": "module",
 	"license": "MIT",
 	"repository": {
@@ -25,7 +26,8 @@
 		"check": "bunx biome check --write ."
 	},
 	"publishConfig": {
-		"access": "public"
+		"access": "public",
+		"provenance": true
 	},
 	"keywords": [
 		"geekbot",
@@ -37,9 +39,6 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.7",
 		"@types/bun": "^1.3.10"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
 	},
 	"dependencies": {
 		"@napi-rs/keyring": "^1.2.0",
