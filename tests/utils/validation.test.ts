@@ -51,6 +51,14 @@ describe("validateNumericId", () => {
 			expect((e as CliError).message).toContain("standup ID");
 		}
 	});
+
+	test("accepts MAX_SAFE_INTEGER as a valid ID", () => {
+		expect(validateNumericId("9007199254740991")).toBe(9007199254740991);
+	});
+
+	test("throws CliError for integer beyond MAX_SAFE_INTEGER", () => {
+		expect(() => validateNumericId("9007199254740993")).toThrow(CliError);
+	});
 });
 
 describe("validateNumericList", () => {
@@ -110,6 +118,10 @@ describe("validateNumericList", () => {
 		} catch (e) {
 			expect((e as CliError).suggestion).toContain("numeric");
 		}
+	});
+
+	test("throws CliError for value beyond MAX_SAFE_INTEGER", () => {
+		expect(() => validateNumericList("9007199254740993", "user ID")).toThrow(CliError);
 	});
 });
 
@@ -217,6 +229,10 @@ describe("validateWaitTime", () => {
 			expect((e as CliError).exitCode).toBe(6);
 			expect((e as CliError).code).toBe("validation_error");
 		}
+	});
+
+	test("throws CliError for value beyond MAX_SAFE_INTEGER", () => {
+		expect(() => validateWaitTime("9007199254740993")).toThrow(CliError);
 	});
 });
 

@@ -7,7 +7,7 @@ import { ExitCode } from "../errors/exit-codes.ts";
  */
 export function validateNumericId(value: string, label: string = "ID"): number {
 	const num = Number(value);
-	if (!Number.isInteger(num) || num <= 0) {
+	if (!Number.isSafeInteger(num) || num <= 0) {
 		throw new CliError(
 			`Invalid ${label}: "${value}". Must be a positive integer.`,
 			"validation_error",
@@ -46,7 +46,7 @@ export function validateNumericList(value: string, label: string): number[] {
 	for (const part of parts) {
 		const trimmed = part.trim();
 		const num = Number(trimmed);
-		if (!Number.isInteger(num) || num <= 0) {
+		if (!Number.isSafeInteger(num) || num <= 0) {
 			throw new CliError(
 				`Invalid ${label}: "${trimmed}" is not a positive integer. All values must be numeric.`,
 				"validation_error",
@@ -94,7 +94,7 @@ export function validateSlackIdList(value: string, label: string): string[] {
  */
 export function validateWaitTime(value: string): number {
 	const num = Number(value);
-	if (!Number.isInteger(num) || num < 0) {
+	if (!Number.isSafeInteger(num) || num < 0) {
 		throw new CliError(
 			`Invalid wait time: "${value}". Must be a non-negative integer.`,
 			"validation_error",
