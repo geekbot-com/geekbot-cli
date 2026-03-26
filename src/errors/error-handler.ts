@@ -1,8 +1,43 @@
+import { ZodError } from "zod";
 import type { FailureEnvelope } from "../types.ts";
 import { CliError } from "./cli-error.ts";
 import { ExitCode } from "./exit-codes.ts";
 
+function formatZodMessage(error: ZodError): string {
+	return error.issues
+		.map((issue) => {
+			const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
+			return `${path}: ${issue.message}`;
+		})
+		.join("; ");
+}
+
 export function handleError(error: unknown, debug: boolean = false): never {
+	if (error instanceof ZodError) {
+		const envelope: FailureEnvelope = {
+			ok: false,
+			data: null,
+			error: {
+				code: "schema_validation_error",
+				message: `Unexpected API response: ${formatZodMessage(error)}`,
+				retryable: false,
+				suggestion:
+					"The API returned data in an unexpected format. The API may have changed or there may be a version mismatch.",
+			},
+			metadata: {
+				timestamp: new Date().toISOString(),
+			},
+		};
+
+		process.stdout.write(`${JSON.stringify(envelope, null, 2)}\n`);
+
+		if (debug) {
+			process.stderr.write(`[debug] ZodError issues: ${JSON.stringify(error.issues)}\n`);
+		}
+
+		process.exit(ExitCode.VALIDATION);
+	}
+
 	if (error instanceof CliError) {
 		const envelope: FailureEnvelope = {
 			ok: false,
