@@ -1,8 +1,38 @@
 # geekbot-cli
 
+[![npm version](https://img.shields.io/npm/v/geekbot-cli)](https://www.npmjs.com/package/geekbot-cli)
+[![CI](https://github.com/geekbot-com/geekbot-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/geekbot-com/geekbot-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A cross-platform CLI tool for interacting with the Geekbot API, designed for AI agents and humans. Built with Bun and TypeScript.
 
-Manage standups, reports, polls, teams, and user profiles programmatically with structured JSON output, machine-readable exit codes, and actionable error messages.
+**Why geekbot-cli?**
+
+- **Structured JSON output** on every command -- pipe results into scripts, dashboards, or AI agents
+- **Machine-readable exit codes** and actionable error messages -- no guessing what went wrong
+- **Secure credential storage** via OS keychain -- no API keys in dotfiles or env scripts
+- **AI-agent ready** -- ships as a [Vercel Skill](https://github.com/vercel-labs/skills) for Claude Code, Cursor, Windsurf, Copilot, and more
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Authentication](#authentication)
+- [Security](#security)
+- [Global Options](#global-options)
+- [Commands](#commands)
+  - [standup](#standup----manage-standups)
+  - [report](#report----manage-reports)
+  - [poll](#poll----manage-polls-slack-teams-only)
+  - [me](#me----view-your-profile-and-teams)
+  - [team](#team----view-team-information)
+  - [auth](#auth----manage-authentication)
+- [Output Format](#output-format)
+- [Exit Codes](#exit-codes)
+- [Error Handling](#error-handling)
+- [Examples](#examples)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Installation
 
@@ -24,7 +54,6 @@ Verify the installation:
 
 ```shell
 geekbot --version
-# 0.2.0
 ```
 
 ### Register the AI agent skill
@@ -35,7 +64,7 @@ To register the Geekbot skill with your AI coding agents (Claude Code, Cursor, W
 npx skills add geekbot-com/geekbot-cli
 ```
 
-This uses the [Vercel Skills](https://github.com/vercel-labs/skills) ecosystem to detect installed agents and register the skill with all of them.
+This detects which AI coding agents are installed on your machine and copies the Geekbot skill files into each agent's skill directory, so the agent can discover and use the CLI autonomously. It uses the [Vercel Skills](https://github.com/vercel-labs/skills) ecosystem under the hood.
 
 <details>
 <summary>Manual skill installation (without npx skills)</summary>
@@ -121,6 +150,13 @@ geekbot auth status
 geekbot auth remove
 ```
 
+## Security
+
+- **API keys are never written to disk in plaintext.** The CLI stores credentials in your OS keychain (macOS Keychain, Windows Credential Vault, or Linux Secret Service). No config files, no dotfiles.
+- **Keys passed via `--api-key` or `GEEKBOT_API_KEY` are not logged.** Debug output (`--debug`) redacts credential values.
+- **Validate before storing.** `geekbot auth setup` checks that the key is valid against the Geekbot API before persisting it, preventing silent failures from typos or revoked keys.
+- **Prefer the keychain over environment variables** for workstations. Environment variables are visible to other processes and may leak into shell history. Use `GEEKBOT_API_KEY` for CI/CD and ephemeral environments where a keychain is unavailable.
+
 ## Global Options
 
 These options apply to all commands:
@@ -128,7 +164,7 @@ These options apply to all commands:
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--api-key <key>` | Geekbot API key (overrides `GEEKBOT_API_KEY` env var) | -- |
-| `--output <format>` | Output format (`json` only) | `json` |
+| `--output <format>` | Output format (currently `json` only; reserved for future formats) | `json` |
 | `--debug` | Show debug output on stderr | `false` |
 | `-v, --version` | Print version number | -- |
 | `--help` | Show help text | -- |
@@ -193,6 +229,22 @@ Same options as `create`. `--name` and `--channel` are required; all other optio
 | Option | Description |
 |--------|-------------|
 | `--yes` | Confirm deletion (required; deletion fails with an error if omitted) |
+
+#### `standup duplicate` options
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--name <name>` | Yes | Name for the new standup |
+
+The `<id>` argument is the ID of the standup to duplicate.
+
+#### `standup start` options
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--users <ids>` | No | Comma-separated user IDs to trigger (omit to trigger all members) |
+
+The `<id>` argument is the ID of the standup to trigger immediately.
 
 ### `report` -- Manage reports
 
@@ -512,6 +564,17 @@ GEEKBOT_INTEGRATION_TEST_API_KEY=your-key bun test:integration
 
 Tests are automatically skipped when `GEEKBOT_INTEGRATION_TEST_API_KEY` is not set. Tests that require a Slack channel (`#geekbot-skill-tests`) will gracefully skip with a warning if the channel does not exist in the workspace.
 
+## Contributing
+
+Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/geekbot-com/geekbot-cli).
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b my-feature`)
+3. Make your changes and add tests
+4. Run `bun test` and `bun run lint` to verify
+5. Commit and push your branch
+6. Open a pull request against `main`
+
 ## License
 
-See LICENSE.
+[MIT](LICENSE)
