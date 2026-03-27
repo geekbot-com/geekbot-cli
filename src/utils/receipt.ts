@@ -41,8 +41,12 @@ export function buildDeleteUndoCommand(standup: Standup): string {
 		parts.push(`--days ${shellEscape(standup.days.join(","))}`);
 	}
 
-	if (standup.wait_time > 0) {
+	if (standup.wait_time !== 0) {
 		parts.push(`--wait-time ${standup.wait_time}`);
+	}
+
+	if (standup.users.length > 0) {
+		parts.push(`--users ${standup.users.map((u) => u.id).join(",")}`);
 	}
 
 	if (standup.questions.length > 0) {
@@ -60,6 +64,8 @@ const FIELD_TO_FLAG: Record<string, string> = {
 	timezone: "--timezone",
 	days: "--days",
 	wait_time: "--wait-time",
+	users: "--users",
+	questions: "--questions",
 };
 
 /**
@@ -83,6 +89,12 @@ export function buildUpdateUndoCommand(
 			parts.push(`${flag} ${shellEscape(prevValue.slice(0, 5))}`);
 		} else if (key === "days" && Array.isArray(prevValue)) {
 			parts.push(`${flag} ${shellEscape(prevValue.join(","))}`);
+		} else if (key === "users" && Array.isArray(prevValue)) {
+			parts.push(`${flag} ${prevValue.map((u: { id: string }) => u.id).join(",")}`);
+		} else if (key === "questions" && Array.isArray(prevValue)) {
+			parts.push(
+				`${flag} ${shellEscape(JSON.stringify(prevValue.map((q: { text: string }) => q.text)))}`,
+			);
 		} else if (typeof prevValue === "number") {
 			parts.push(`${flag} ${prevValue}`);
 		} else if (typeof prevValue === "string") {

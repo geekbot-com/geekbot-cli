@@ -150,4 +150,30 @@ describe("resolveCredential", () => {
 		expect(result.apiKey).toBe("keychain-key");
 		expect(result.source).toBe("keychain");
 	});
+
+	test("P2-4: whitespace-only flag falls through to env", async () => {
+		process.env.GEEKBOT_API_KEY = "env-key";
+		const result = await resolveCredential({ apiKeyFlag: "   " }, mockGetKeychainKey);
+		expect(result.apiKey).toBe("env-key");
+		expect(result.source).toBe("env");
+	});
+
+	test("P2-4: whitespace-only env var falls through to keychain", async () => {
+		process.env.GEEKBOT_API_KEY = "   \t\n";
+		mockGetKeychainKey.mockReturnValue("keychain-key");
+		const result = await resolveCredential({}, mockGetKeychainKey);
+		expect(result.apiKey).toBe("keychain-key");
+		expect(result.source).toBe("keychain");
+	});
+
+	test("P2-4: whitespace-only flag and env var throw auth_missing", async () => {
+		process.env.GEEKBOT_API_KEY = "   ";
+		try {
+			await resolveCredential({ apiKeyFlag: "  " }, mockGetKeychainKey);
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("auth_missing");
+		}
+	});
 });

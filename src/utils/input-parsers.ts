@@ -197,7 +197,7 @@ export function parseDateFilter(raw: string, label: string): string {
 			"validation_error",
 			ExitCode.VALIDATION,
 			false,
-			"Accepted formats: ISO 8601 (2024-01-15) or unix timestamp (1705276800)",
+			"Accepted formats: YYYY-MM-DD (2024-01-15) or unix timestamp (1705276800)",
 		);
 	}
 
@@ -208,7 +208,7 @@ export function parseDateFilter(raw: string, label: string): string {
 			"validation_error",
 			ExitCode.VALIDATION,
 			false,
-			"Accepted formats: ISO 8601 (2024-01-15) or unix timestamp (1705276800)",
+			"Accepted formats: YYYY-MM-DD (2024-01-15) or unix timestamp (1705276800)",
 		);
 	}
 
@@ -226,7 +226,7 @@ export function parseDateFilter(raw: string, label: string): string {
 			"validation_error",
 			ExitCode.VALIDATION,
 			false,
-			"Accepted formats: ISO 8601 (2024-01-15) or unix timestamp (1705276800)",
+			"Accepted formats: YYYY-MM-DD (2024-01-15) or unix timestamp (1705276800)",
 		);
 	}
 

@@ -70,13 +70,14 @@ export function validateSlackIdList(value: string, label: string): string[] {
  */
 export function validateWaitTime(value: string): number {
 	const num = Number(value);
+	if (num === -1) return num; // -1 is "exact time" sentinel
 	if (!Number.isSafeInteger(num) || num < 0) {
 		throw new CliError(
-			`Invalid wait time: "${value}". Must be a non-negative integer.`,
+			`Invalid wait time: "${value}". Must be a non-negative integer or -1 for exact time.`,
 			"validation_error",
 			ExitCode.VALIDATION,
 			false,
-			`Provide a numeric value in minutes, e.g.: --wait-time 15`,
+			`Provide a numeric value in minutes, e.g.: --wait-time 15 (or -1 for exact time)`,
 		);
 	}
 	return num;

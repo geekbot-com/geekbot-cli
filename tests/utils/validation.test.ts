@@ -157,7 +157,11 @@ describe("validateWaitTime", () => {
 		expect(() => validateWaitTime("1.5")).toThrow(CliError);
 	});
 
-	test("throws CliError for negative number", () => {
+	test("P2-1: accepts -1 as exact-time sentinel", () => {
+		expect(validateWaitTime("-1")).toBe(-1);
+	});
+
+	test("throws CliError for negative number other than -1", () => {
 		expect(() => validateWaitTime("-5")).toThrow(CliError);
 	});
 

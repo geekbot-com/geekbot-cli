@@ -6,7 +6,7 @@ const ReportAnswerSchema = z.object({
 	id: z.number(),
 	question: z.string().optional().default(""),
 	question_id: z.number().optional(),
-	answer: z.string(),
+	answer: z.string().nullable(),
 	answer_type: z.string().optional().default("text"),
 	images: z
 		.array(
@@ -34,7 +34,7 @@ const TimelineReportRawSchema = z.object({
 	slack_ts: z.string().nullable().optional(),
 	channel: z.string().optional().default(""),
 	questions: z.array(ReportAnswerSchema),
-	member: CompactUserSchema,
+	member: CompactUserSchema.optional(),
 	is_anonymous: z.boolean().optional().default(false),
 	broadcast_thread: z.boolean().optional().default(false),
 	is_confidential: z.boolean().optional().default(false),
@@ -49,11 +49,11 @@ const TimelineReportRawSchema = z.object({
 const SubmittedReportRawSchema = z.object({
 	id: z.number(),
 	standup_id: z.number(),
-	timestamp: z.number(),
+	timestamp: z.number().nullable(),
 	slack_ts: z.string().nullable().optional(),
 	started_at: z.number().optional(),
 	done_at: z.number().optional(),
-	broadcasted_at: z.number().nullable().optional(),
+	broadcasted_at: z.string().nullable().optional(),
 	channel: z.string().optional().default(""),
 	member: z
 		.object({
@@ -89,7 +89,7 @@ function normalizeTimelineReport(raw: z.output<typeof TimelineReportRawSchema>):
 		standup_id: raw.standup_id,
 		created_at: new Date(raw.timestamp * 1000).toISOString(),
 		questions: raw.questions,
-		member: raw.member, // Already normalized by CompactUserSchema (profileImg -> profile_img)
+		member: raw.member ?? null, // Already normalized by CompactUserSchema (profileImg -> profile_img)
 		is_anonymous: raw.is_anonymous,
 		standup_name: raw.standup_name,
 	};
@@ -103,7 +103,7 @@ export const SubmittedReportSchema = SubmittedReportRawSchema.transform(
 	(raw): Report => ({
 		id: raw.id,
 		standup_id: raw.standup_id,
-		created_at: new Date(raw.timestamp * 1000).toISOString(),
+		created_at: new Date((raw.timestamp ?? raw.done_at ?? Date.now() / 1000) * 1000).toISOString(),
 		questions: raw.answers, // POST uses "answers" key, normalize to "questions"
 		member: raw.member
 			? {

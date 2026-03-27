@@ -142,6 +142,55 @@ describe.skipIf(!API_KEY)("Standup Integration", () => {
 		expect(duplicated.name).toBe(dupName);
 	}, 30000);
 
+	test("replace preserves fields carried forward from previous state", async () => {
+		if (!channelAvailable) {
+			throw new Error("SKIP: #geekbot-skill-tests channel not found");
+		}
+
+		// Create standup with non-default values
+		const created = await client.post<{ id: number }>("/v1/standups", {
+			name: uniqueName("test-replace-carry"),
+			channel: "geekbot-skill-tests",
+			time: "15:30:00",
+			timezone: "US/Eastern",
+			days: ["Tue", "Thu"],
+			wait_time: 5,
+			questions: [{ question: "Carry-forward test?" }],
+			sync_channel_members: true,
+		});
+		cleanupIds.push(created.id);
+
+		const before = await client.get<{
+			time: string;
+			days: string[];
+			wait_time: number;
+			timezone: string;
+		}>(`/v1/standups/${created.id}`);
+
+		// Replace with carried-forward values (simulates fixed handler behavior)
+		await client.put<unknown>(`/v1/standups/${created.id}`, {
+			name: uniqueName("test-replace-carried"),
+			channel: "geekbot-skill-tests",
+			time: before.time,
+			timezone: before.timezone,
+			days: before.days,
+			wait_time: before.wait_time,
+			questions: [{ question: "Carry-forward test?" }],
+			sync_channel_members: true,
+		});
+
+		const after = await client.get<{
+			time: string;
+			days: string[];
+			wait_time: number;
+			timezone: string;
+		}>(`/v1/standups/${created.id}`);
+
+		expect(after.time).toBe(before.time);
+		expect(after.days).toEqual(before.days);
+		expect(after.timezone).toBe(before.timezone);
+	}, 30000);
+
 	test("start triggers standup (returns ok)", async () => {
 		if (!channelAvailable) {
 			throw new Error("SKIP: #geekbot-skill-tests channel not found");

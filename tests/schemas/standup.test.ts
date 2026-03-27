@@ -26,6 +26,11 @@ describe("StandupSchema", () => {
 		expect(standup.wait_time).toBe(0);
 	});
 
+	test("P2-1: preserves -1 wait_time sentinel without dividing", () => {
+		const standup = StandupSchema.parse({ ...BASE_STANDUP, wait_time: -1 });
+		expect(standup.wait_time).toBe(-1);
+	});
+
 	test("preserves all other fields", () => {
 		const standup = StandupSchema.parse({ ...BASE_STANDUP, wait_time: 60 });
 		expect(standup.name).toBe("Daily");

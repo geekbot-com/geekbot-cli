@@ -99,6 +99,18 @@ async function enrichNotFound(
 		await fn(client);
 	} catch (error) {
 		if (error instanceof CliError && error.code === "not_found") {
+			// Don't enrich user-not-member errors with standup-ID suggestions
+			const isUserNotMember = /user is not member/i.test(error.message);
+			if (isUserNotMember) {
+				throw new CliError(
+					error.message,
+					error.code,
+					error.exitCode,
+					error.retryable,
+					"The specified user is not a member of this standup. Check members with: geekbot standup get <id>",
+					error.context,
+				);
+			}
 			const suggestion = await buildNotFoundSuggestion(client, resourceType);
 			if (suggestion) {
 				throw new CliError(
@@ -117,11 +129,14 @@ async function enrichNotFound(
 
 // ── Handlers ──────────────────────────────────────────────────────────
 
-/** Brief standup projection — only essential fields for discovery */
+/** Brief standup projection — essential fields for discovery */
 export interface StandupBrief {
 	id: number;
 	name: string;
 	channel: string;
+	time: string;
+	timezone: string;
+	days: string[];
 }
 
 /**
@@ -173,6 +188,9 @@ export async function handleStandupList(
 			id: s.id,
 			name: s.name,
 			channel: s.channel,
+			time: s.time,
+			timezone: s.timezone,
+			days: s.days,
 		}));
 		writeOutput(successList(brief));
 		return;
@@ -352,9 +370,12 @@ export async function handleStandupReplace(
 			const previousStandup = StandupSchema.parse(prevRaw);
 
 			// Build full body — PUT requires complete representation
-			const time = options.time ?? "10:00";
+			// Carry forward from previous standup when flags are omitted
+			const time = options.time ?? previousStandup.time.slice(0, 5);
 			validateTimeFormat(time);
-			const days = validateDayAbbreviations((options.days ?? "Mon,Tue,Wed,Thu,Fri").split(","));
+			const days = options.days
+				? validateDayAbbreviations(options.days.split(","))
+				: previousStandup.days;
 
 			const body: Record<string, unknown> = {
 				name: options.name,
@@ -363,9 +384,7 @@ export async function handleStandupReplace(
 				days,
 			};
 
-			if (options.timezone !== undefined) {
-				body.timezone = options.timezone;
-			}
+			body.timezone = options.timezone ?? previousStandup.timezone;
 
 			// questions: use provided or carry forward from existing standup
 			if (options.questions !== undefined) {
@@ -378,11 +397,14 @@ export async function handleStandupReplace(
 				body.users = validateSlackIdList(options.users, "user ID");
 				body.sync_channel_members = false;
 			} else {
-				body.sync_channel_members = true;
+				body.users = previousStandup.users.map((u) => u.id);
+				body.sync_channel_members = previousStandup.sync_channel_members ?? false;
 			}
 
 			if (options.waitTime !== undefined) {
 				body.wait_time = validateWaitTime(options.waitTime);
+			} else {
+				body.wait_time = previousStandup.wait_time;
 			}
 
 			const raw = await client.put<unknown>(`/v1/standups/${numericId}`, body);
@@ -522,8 +544,12 @@ function buildReplaceUndoCommand(id: number, prev: Standup): string {
 		parts.push(`--days ${shellEscape(prev.days.join(","))}`);
 	}
 
-	if (prev.wait_time > 0) {
+	if (prev.wait_time !== 0) {
 		parts.push(`--wait-time ${prev.wait_time}`);
+	}
+
+	if (prev.users.length > 0) {
+		parts.push(`--users ${prev.users.map((u) => u.id).join(",")}`);
 	}
 
 	if (prev.questions.length > 0) {

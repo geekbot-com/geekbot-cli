@@ -50,7 +50,7 @@ const StandupRawSchema = z.object({
 
 /** Normalize a raw standup: convert wait_time from seconds to minutes */
 function normalizeStandup(raw: z.output<typeof StandupRawSchema>) {
-	return { ...raw, wait_time: raw.wait_time / 60 }; // NORM: seconds -> minutes (Pitfall 1)
+	return { ...raw, wait_time: raw.wait_time === -1 ? -1 : raw.wait_time / 60 }; // NORM: seconds -> minutes; -1 is "exact time" sentinel
 }
 
 /** Normalized standup -- wait_time converted from seconds to minutes */

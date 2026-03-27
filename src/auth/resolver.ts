@@ -13,13 +13,19 @@ export async function resolveCredential(
 ): Promise<CredentialResult> {
 	// Priority 1: --api-key flag
 	if (options.apiKeyFlag) {
-		return { apiKey: options.apiKeyFlag.trim(), source: "flag" };
+		const trimmed = options.apiKeyFlag.trim();
+		if (trimmed) {
+			return { apiKey: trimmed, source: "flag" };
+		}
 	}
 
 	// Priority 2: GEEKBOT_API_KEY env var
 	const envKey = process.env.GEEKBOT_API_KEY;
 	if (envKey) {
-		return { apiKey: envKey.trim(), source: "env" };
+		const trimmed = envKey.trim();
+		if (trimmed) {
+			return { apiKey: trimmed, source: "env" };
+		}
 	}
 
 	// Priority 3: OS keychain

@@ -379,7 +379,7 @@ describe("parseDateFilter", () => {
 			parseDateFilter("not-a-date", "--before");
 			throw new Error("should have thrown");
 		} catch (e) {
-			expect((e as CliError).suggestion).toContain("ISO 8601");
+			expect((e as CliError).suggestion).toContain("YYYY-MM-DD");
 			expect((e as CliError).suggestion).toContain("unix timestamp");
 		}
 	});

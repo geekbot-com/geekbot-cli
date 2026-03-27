@@ -169,7 +169,7 @@ describe("handleStandupList", () => {
 		expect(envelope.data[0]?.wait_time).toBe(10);
 	});
 
-	test("--brief strips to only id, name, channel", async () => {
+	test("--brief strips to only id, name, channel, time, timezone, days", async () => {
 		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
 		await handleStandupList({ brief: true }, GLOBAL_OPTS);
 
@@ -178,15 +178,15 @@ describe("handleStandupList", () => {
 		};
 		expect(envelope.data).toHaveLength(1);
 		const item = envelope.data[0] as Record<string, unknown>;
-		expect(Object.keys(item).sort()).toEqual(["channel", "id", "name"]);
+		expect(Object.keys(item).sort()).toEqual(["channel", "days", "id", "name", "time", "timezone"]);
 		expect(item.id).toBe(42);
 		expect(item.name).toBe("Daily Standup");
 		expect(item.channel).toBe("#engineering");
+		expect(item.time).toBe("10:00:00");
+		expect(item.timezone).toBe("America/New_York");
+		expect(item.days).toEqual(["Mon", "Wed", "Fri"]);
 		expect(item.questions).toBeUndefined();
 		expect(item.users).toBeUndefined();
-		expect(item.time).toBeUndefined();
-		expect(item.timezone).toBeUndefined();
-		expect(item.days).toBeUndefined();
 	});
 
 	test("--name filters by case-insensitive substring match", async () => {
@@ -390,8 +390,11 @@ describe("handleStandupList", () => {
 		expect(envelope.data[0]?.id).toBe(1);
 		expect(Object.keys(envelope.data[0] as Record<string, unknown>).sort()).toEqual([
 			"channel",
+			"days",
 			"id",
 			"name",
+			"time",
+			"timezone",
 		]);
 	});
 });
@@ -804,16 +807,35 @@ describe("handleStandupReplace", () => {
 		expect(envelope.metadata.undo).toContain("geekbot standup replace 42");
 	});
 
-	test("PUT body always includes time (uses default 10:00 when not provided)", async () => {
+	test("PUT body carries forward time from previous standup when not provided", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
 		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.time).toBe("10:00:00");
+		expect(body.time).toBe("10:00:00"); // carried from RAW_STANDUP.time "10:00:00"
 	});
 
-	test("PUT body always includes days (uses default weekdays when not provided)", async () => {
+	test("PUT body carries forward days from previous standup when not provided", async () => {
 		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
 		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.days).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+		expect(body.days).toEqual(["Mon", "Wed", "Fri"]); // carried from RAW_STANDUP.days
+	});
+
+	test("PUT body carries forward timezone from previous standup when not provided", async () => {
+		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
+		expect(body.timezone).toBe("America/New_York"); // carried from RAW_STANDUP.timezone
+	});
+
+	test("PUT body carries forward users from previous standup when not provided", async () => {
+		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
+		expect(body.users).toEqual([]); // RAW_STANDUP has empty users
+		expect(body.sync_channel_members).toBe(true); // carried from RAW_STANDUP
+	});
+
+	test("PUT body carries forward wait_time from previous standup when not provided", async () => {
+		await handleStandupReplace("42", { name: "R", channel: "#c" }, GLOBAL_OPTS);
+		const [, body] = mockPut.mock.calls[0] as [string, Record<string, unknown>];
+		expect(body.wait_time).toBe(10); // RAW_STANDUP.wait_time=600 normalized to 10 minutes
 	});
 
 	test("PUT body carries forward existing questions when --questions not provided", async () => {

@@ -11,8 +11,8 @@ export function createReportCommand(): Command {
 		.description("List reports with optional filters")
 		.option("--standup-id <id>", "Filter by standup ID")
 		.option("--user-id <id>", "Filter by user ID")
-		.option("--before <date>", "Reports before date (ISO 8601 or unix timestamp)")
-		.option("--after <date>", "Reports after date (ISO 8601 or unix timestamp)")
+		.option("--before <date>", "Reports before date (YYYY-MM-DD or unix timestamp)")
+		.option("--after <date>", "Reports after date (YYYY-MM-DD or unix timestamp)")
 		.option("--limit <n>", "Max number of reports to return")
 		.addHelpText(
 			"after",

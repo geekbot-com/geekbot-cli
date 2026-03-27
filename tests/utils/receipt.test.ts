@@ -152,6 +152,38 @@ describe("buildDeleteUndoCommand", () => {
 		expect(cmd).not.toContain("--wait-time");
 	});
 
+	test("P2-2: includes --wait-time for wait_time=-1 (exact time)", () => {
+		const standup = { ...STANDUP_FIXTURE, wait_time: -1 };
+		const cmd = buildDeleteUndoCommand(standup);
+		expect(cmd).toContain("--wait-time -1");
+	});
+
+	test("P2-2: includes --users when users are present", () => {
+		const standup = {
+			...STANDUP_FIXTURE,
+			users: [
+				{
+					id: "U123",
+					role: "member",
+					email: "a@b.com",
+					username: "alice",
+					realname: "Alice",
+					profile_img: "",
+				},
+				{
+					id: "U456",
+					role: "member",
+					email: "b@b.com",
+					username: "bob",
+					realname: "Bob",
+					profile_img: "",
+				},
+			],
+		};
+		const cmd = buildDeleteUndoCommand(standup);
+		expect(cmd).toContain("--users U123,U456");
+	});
+
 	test("omits --questions when questions array is empty", () => {
 		const standup = { ...STANDUP_FIXTURE, questions: [] };
 		const cmd = buildDeleteUndoCommand(standup);
