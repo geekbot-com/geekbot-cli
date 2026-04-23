@@ -133,7 +133,7 @@ async function enrichNotFound(
 export interface StandupBrief {
 	id: number;
 	name: string;
-	channel: string;
+	channel: string | null;
 	time: string;
 	timezone: string;
 	days: string[];
@@ -162,7 +162,7 @@ export async function handleStandupList(
 
 	if (options.channel) {
 		const needle = options.channel.toLowerCase();
-		standups = standups.filter((s) => s.channel.toLowerCase().includes(needle));
+		standups = standups.filter((s) => s.channel?.toLowerCase().includes(needle) ?? false);
 	}
 
 	if (options.mine) {
@@ -530,7 +530,7 @@ function buildReplaceUndoCommand(id: number, prev: Standup): string {
 	const parts: string[] = [`geekbot standup replace ${id}`];
 
 	parts.push(`--name ${shellEscape(prev.name)}`);
-	parts.push(`--channel ${shellEscape(prev.channel)}`);
+	parts.push(`--channel ${shellEscape(prev.channel ?? "")}`);
 
 	if (prev.time) {
 		parts.push(`--time ${shellEscape(prev.time.slice(0, 5))}`);

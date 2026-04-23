@@ -65,6 +65,11 @@ describe("StandupSchema", () => {
 		expect(standup.draft).toBeUndefined();
 		expect(standup.paused).toBeUndefined();
 	});
+
+	test("accepts null channel (e.g. DM-mode or unassigned standups)", () => {
+		const standup = StandupSchema.parse({ ...BASE_STANDUP, wait_time: 60, channel: null });
+		expect(standup.channel).toBeNull();
+	});
 });
 
 describe("StandupSchema negative tests", () => {
