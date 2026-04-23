@@ -11,14 +11,36 @@ const PollQuestionSchema = z.object({
 	one_option_limit: z.boolean(),
 });
 
+/**
+ * Recurrence day/month fields. The upstream poll-job-scheduler emits these as objects
+ * with `value` and/or `order` keys (e.g. `{ value: "monday" }`, `{ order: "2nd", value: "wednesday" }`,
+ * `{ order: "1st" }`, `{ value: "july" }`). A legacy string form (`"Mon"`) is also accepted
+ * for forward/backward compatibility — no consumer reads these fields.
+ */
+const PollRecurrenceDaySchema = z.union([
+	z.string(),
+	z.object({
+		value: z.string().optional(),
+		order: z.string().optional(),
+	}),
+]);
+
+const PollRecurrenceMonthSchema = z.union([
+	z.string(),
+	z.object({
+		value: z.string().optional(),
+		order: z.string().optional(),
+	}),
+]);
+
 /** Poll recurrence settings */
 const PollRecurrenceSchema = z
 	.object({
 		type: z.string(),
 		repeat: z.number().nullable(),
 		every: z.string().nullable(),
-		day: z.string().nullable(),
-		month: z.string().nullable(),
+		day: PollRecurrenceDaySchema.nullable(),
+		month: PollRecurrenceMonthSchema.nullable(),
 	})
 	.nullable();
 

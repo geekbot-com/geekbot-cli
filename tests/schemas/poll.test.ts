@@ -75,6 +75,95 @@ describe("PollSchema", () => {
 		expect(poll.users).toHaveLength(1);
 		expect(poll.users[0]?.username).toBe("jane");
 	});
+
+	test("#5: accepts weekly recurrence with object day", () => {
+		const poll = PollSchema.parse({
+			...samplePoll,
+			recurrence: { type: "weekly", repeat: 1, every: null, day: { value: "monday" }, month: null },
+		});
+		expect(poll.recurrence?.day).toEqual({ value: "monday" });
+	});
+
+	test("#5: accepts monthly recurrence with nth-of-weekday day object", () => {
+		const poll = PollSchema.parse({
+			...samplePoll,
+			recurrence: {
+				type: "monthly",
+				repeat: null,
+				every: null,
+				day: { order: "2nd", value: "wednesday" },
+				month: null,
+			},
+		});
+		expect(poll.recurrence?.day).toEqual({ order: "2nd", value: "wednesday" });
+	});
+
+	test("#5: accepts monthly recurrence with date-of-month day object", () => {
+		const poll = PollSchema.parse({
+			...samplePoll,
+			recurrence: {
+				type: "monthly",
+				repeat: null,
+				every: null,
+				day: { order: "15", value: "day" },
+				month: null,
+			},
+		});
+		expect(poll.recurrence?.day).toEqual({ order: "15", value: "day" });
+	});
+
+	test("#5: accepts quarterly recurrence with object month and day", () => {
+		const poll = PollSchema.parse({
+			...samplePoll,
+			recurrence: {
+				type: "quarterly",
+				repeat: null,
+				every: null,
+				day: { order: "3rd", value: "monday" },
+				month: { order: "1st" },
+			},
+		});
+		expect(poll.recurrence?.month).toEqual({ order: "1st" });
+		expect(poll.recurrence?.day).toEqual({ order: "3rd", value: "monday" });
+	});
+
+	test("#5: accepts yearly recurrence with object month and day", () => {
+		const poll = PollSchema.parse({
+			...samplePoll,
+			recurrence: {
+				type: "yearly",
+				repeat: null,
+				every: null,
+				day: { order: "1st", value: "monday" },
+				month: { value: "july" },
+			},
+		});
+		expect(poll.recurrence?.month).toEqual({ value: "july" });
+	});
+
+	test("#5: preserves legacy string day and month (backward compat)", () => {
+		const poll = PollSchema.parse({
+			...samplePoll,
+			recurrence: {
+				type: "monthly",
+				repeat: 1,
+				every: null,
+				day: "Mon",
+				month: "January",
+			},
+		});
+		expect(poll.recurrence?.day).toBe("Mon");
+		expect(poll.recurrence?.month).toBe("January");
+	});
+
+	test("#5: accepts null day and month inside a non-null recurrence", () => {
+		const poll = PollSchema.parse({
+			...samplePoll,
+			recurrence: { type: "once", repeat: null, every: null, day: null, month: null },
+		});
+		expect(poll.recurrence?.day).toBeNull();
+		expect(poll.recurrence?.month).toBeNull();
+	});
 });
 
 describe("PollListSchema", () => {
@@ -86,6 +175,25 @@ describe("PollListSchema", () => {
 	test("parses empty array", () => {
 		const polls = PollListSchema.parse([]);
 		expect(polls).toHaveLength(0);
+	});
+
+	test("#5: accepts list where recurrence.day and recurrence.month are objects", () => {
+		// Exact failure path from issue #5 — error was `0.recurrence.day`, `0.recurrence.month`.
+		const polls = PollListSchema.parse([
+			{
+				...samplePoll,
+				recurrence: {
+					type: "yearly",
+					repeat: null,
+					every: null,
+					day: { order: "1st", value: "monday" },
+					month: { value: "july" },
+				},
+			},
+		]);
+		expect(polls).toHaveLength(1);
+		expect(polls[0]?.recurrence?.day).toEqual({ order: "1st", value: "monday" });
+		expect(polls[0]?.recurrence?.month).toEqual({ value: "july" });
 	});
 });
 
