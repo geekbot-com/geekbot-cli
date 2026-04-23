@@ -18,7 +18,8 @@ jobs:
           bun test tests/auth/ tests/http/ tests/output/ tests/utils/ tests/schemas/
           bun test tests/errors/error-handler.test.ts tests/errors/cli-error.test.ts tests/errors/not-found-helper.test.ts tests/errors/exit-codes.test.ts
           bun test tests/errors/error-handler-output.test.ts
-          bun test tests/handlers/ tests/cli/ tests/ci/
+          bun test tests/cli/commander-error.test.ts
+          bun test tests/handlers/ tests/cli/commands/ tests/cli/globals.test.ts tests/cli/index.test.ts tests/ci/
 
   publish:
     needs: ci
