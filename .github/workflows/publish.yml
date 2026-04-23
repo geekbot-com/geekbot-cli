@@ -36,7 +36,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       # Node 22 ships npm 10.x; OIDC trusted publishing needs 11+.
-      # Pin to npm@11 to avoid breakage on broken `latest` releases.
-      - run: npm install -g npm@11
+      # The bundled npm 10.9.x in Node 22.22.2 is broken (missing
+      # promise-retry), so we bootstrap npm 11 via corepack which
+      # downloads a clean npm pack and doesn't depend on the bundled
+      # npm resolver.
+      - run: |
+          corepack enable npm
+          corepack prepare npm@11 --activate
+          npm --version
 
       - run: npm publish --provenance --access public
