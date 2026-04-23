@@ -1,6 +1,6 @@
 ---
-name: setup
-description: Install, authenticate, and verify the geekbot CLI end to end. User-triggered via /geekbot:setup.
+name: geekbot-setup
+description: Install, authenticate, and verify the geekbot CLI end to end. User-triggered via /geekbot:geekbot-setup.
 disable-model-invocation: true
 allowed-tools: Bash
 ---
@@ -62,7 +62,7 @@ Goal: get the user fully ready — CLI installed, CLI authenticated, and a clear
    Next:        you're ready — try "fetch my standups"
    ```
 
-   If auth is still missing, end with "run `/geekbot:setup` again after completing the `geekbot auth setup` step."
+   If auth is still missing, end with "run `/geekbot:geekbot-setup` again after completing the `geekbot auth setup` step."
 
 ## Why not handle the API key directly
 

@@ -1,12 +1,12 @@
 ---
-name: status
+name: geekbot-status
 description: Report the install + auth state of the geekbot CLI. Safe for Claude to invoke proactively before running Geekbot actions.
 allowed-tools: Bash
 ---
 
 # Geekbot — Status
 
-Goal: emit a compact health check for the CLI. Useful both as a user-triggered `/geekbot:status` and as a pre-flight check before any action skill that shells out to `geekbot`.
+Goal: emit a compact health check for the CLI. Useful both as a user-triggered `/geekbot:geekbot-status` and as a pre-flight check before any action skill that shells out to `geekbot`.
 
 ## Steps
 
@@ -45,9 +45,9 @@ Keep it to the table — no prose about remediation.
 
 ## Failure recovery (only when status or an action skill fails)
 
-This guidance applies when `/geekbot:status`, the main action skill, or any geekbot-dependent flow hits a blocker — **not** as part of the status table itself.
+This guidance applies when `/geekbot:geekbot-status`, the main action skill, or any geekbot-dependent flow hits a blocker — **not** as part of the status table itself.
 
-- Binary missing → recommend running `/geekbot:setup`.
-- Auth missing or invalid → recommend running `/geekbot:setup`.
+- Binary missing → recommend running `/geekbot:geekbot-setup`.
+- Auth missing or invalid → recommend running `/geekbot:geekbot-setup`.
 
-Surface the recommendation as a short follow-up line after the failure, e.g. *"Run `/geekbot:setup` to install and authenticate the CLI."*
+Surface the recommendation as a short follow-up line after the failure, e.g. *"Run `/geekbot:geekbot-setup` to install and authenticate the CLI."*

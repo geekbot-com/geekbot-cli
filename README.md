@@ -45,7 +45,7 @@ A cross-platform CLI tool for interacting with the [Geekbot](https://geekbot.com
 
 - [Node.js](https://nodejs.org/) + [npm](https://www.npmjs.com/) (or [Bun](https://bun.sh/) v1.3.5+ if you prefer) — needed to install the `geekbot` binary.
 
-> If you're installing through a Claude Code plugin, Codex plugin, or Gemini extension, **you don't need to do anything manually**. The `/geekbot:setup` skill checks for the CLI and runs `npm install -g geekbot-cli` for you; authentication is prompted interactively.
+> If you're installing through a Claude Code plugin, Codex plugin, or Gemini extension, **you don't need to do anything manually**. The `/geekbot:geekbot-setup` skill checks for the CLI and runs `npm install -g geekbot-cli` for you; authentication is prompted interactively.
 
 ### Install as a Claude Code plugin (recommended for Claude Code users)
 
@@ -58,7 +58,7 @@ Install the plugin from this repo's built-in marketplace — it bundles the CLI 
 /reload-plugins
 ```
 
-Then run `/geekbot:setup`. Claude will:
+Then run `/geekbot:geekbot-setup`. Claude will:
 
 1. Install the `geekbot` CLI globally via `npm install -g geekbot-cli` (if it isn't on your `$PATH`)
 2. Walk you through the `geekbot auth setup --api-key …` flow (you paste the key into **your own shell**, never into the conversation)
@@ -68,9 +68,9 @@ The plugin ships three skills:
 
 | Skill | Slash command | What it does |
 |---|---|---|
-| setup | `/geekbot:setup` | Install the CLI, authenticate, and verify — end to end |
-| status | `/geekbot:status` | Show CLI version + auth state |
-| geekbot | auto-invoked | Handles standup / report / poll workflows when you ask in natural language |
+| geekbot-setup | `/geekbot:geekbot-setup` | Install the CLI, authenticate, and verify — end to end |
+| geekbot-status | `/geekbot:geekbot-status` | Show CLI version + auth state |
+| geekbot-run | auto-invoked | Handles standup / report / poll workflows when you ask in natural language |
 
 The third skill is auto-invoked — no slash command needed. Say *"fetch my standups"*, *"draft my report"*, or *"who hasn't posted today"* and Claude will drive the CLI for you.
 
@@ -93,20 +93,28 @@ Claude Desktop will fetch the repo, read `.claude-plugin/marketplace.json`, and 
 
 Claude Desktop runs tool calls inside a per-conversation network sandbox. The `geekbot` CLI talks to `api.geekbot.com`, so you need to allow that host or every call will fail with a network error.
 
-In the chat's **Settings → Sandbox → Allowed domains** (or the per-message "Allow network access" prompt), add:
+Allowlisting happens in two independent places — **admins and individual users both need to act**:
 
-```
-api.geekbot.com
-```
+- **Admin (organization-wide)** — in the Anthropic console, add `api.geekbot.com` to the organization's network allowlist so the domain isn't blocked by policy. Without this, individual user overrides won't help.
 
-Apply it to all conversations so you don't have to re-add it each time.
+- **Individual user (per workspace / per session)** — in Claude Desktop: **Settings → Sandbox → Allowed domains** (or the per-message "Allow network access" prompt), add:
+
+  ```
+  api.geekbot.com
+  ```
+
+  Apply it to **all conversations** (not just the current one) so you don't re-add it each time.
+
+  > **Cowork sessions specifically:** even when the admin allowlist has `api.geekbot.com`, each participant still sees the per-session network prompt the first time a tool call reaches that host. Accept it (or pre-add it under Allowed domains) for the skill to work on your side. Other participants must do the same for their own turns.
+
+If requests still fail after both steps, check the request path — calls must go directly to `https://api.geekbot.com/...`. Proxy domains and redirects aren't covered by allowlisting just `api.geekbot.com`.
 
 **3. Use it:**
 
 Plugin-provided slash commands and skills only surface in the surfaces that support tool use — in Claude Desktop today that's **cowork sessions** and **code chats**. Regular text chats won't invoke the skill. In a cowork or code chat:
 
-- Say *"fetch my standups"* or *"draft my standup report"* — the auto-invoked `geekbot` skill will run `geekbot standup list` (or equivalent) for you.
-- The CLI itself is installed inside the sandbox on first use via `/geekbot:setup`, which runs `npm install -g geekbot-cli` and walks you through authentication (paste your API key into the sandbox shell, not the conversation).
+- Say *"fetch my standups"* or *"draft my standup report"* — the auto-invoked `geekbot-run` skill will run `geekbot standup list` (or equivalent) for you.
+- The CLI itself is installed inside the sandbox on first use via `/geekbot:geekbot-setup`, which runs `npm install -g geekbot-cli` and walks you through authentication (paste your API key into the sandbox shell, not the conversation).
 
 ### Install as a Codex CLI plugin
 
@@ -138,9 +146,9 @@ Then inside the session type:
 
 Find **geekbot** under the `geekbot-cli` marketplace and install it.
 
-**Step 3 — use it.** Slash commands like `/geekbot:setup` don't surface in Codex (Codex doesn't document skill-based slash commands), so invoke the skills via:
+**Step 3 — use it.** Slash commands like `/geekbot:geekbot-setup` don't surface in Codex (Codex doesn't document skill-based slash commands), so invoke the skills via:
 
-- **Natural language** — *"fetch my standups"*, *"draft my report"*. Codex auto-discovers the `geekbot` skill by its description and shells out to the CLI.
+- **Natural language** — *"fetch my standups"*, *"draft my report"*. Codex auto-discovers the `geekbot-run` skill by its description and shells out to the CLI.
 - **`@`-mention** — `@geekbot fetch my standups` to force invocation.
 
 For first-time setup, ask in chat:
@@ -217,24 +225,24 @@ npx skills add geekbot-com/geekbot-cli
 
 ```shell
 # Resolve the global install path (once):
-SKILL_SRC="$(npm root -g)/geekbot-cli/skills/geekbot"        # npm installs
+SKILL_SRC="$(npm root -g)/geekbot-cli/skills/geekbot-run"    # npm installs
 # For Bun installs, the path differs per platform — check $(bun pm ls -g).
 
 # Claude Code (user-wide)
 mkdir -p ~/.claude/skills
-ln -sfn "$SKILL_SRC" ~/.claude/skills/geekbot
+ln -sfn "$SKILL_SRC" ~/.claude/skills/geekbot-run
 
 # Universal .agents/skills/ — picked up by Cursor, Codex, Gemini CLI, Windsurf, and more
 mkdir -p .agents/skills
-ln -sfn "$SKILL_SRC" .agents/skills/geekbot
+ln -sfn "$SKILL_SRC" .agents/skills/geekbot-run
 
 # Windsurf (user-wide)
 mkdir -p ~/.codeium/windsurf/skills
-ln -sfn "$SKILL_SRC" ~/.codeium/windsurf/skills/geekbot
+ln -sfn "$SKILL_SRC" ~/.codeium/windsurf/skills/geekbot-run
 
 # Roo Code (user-wide)
 mkdir -p ~/.roo/skills
-ln -sfn "$SKILL_SRC" ~/.roo/skills/geekbot
+ln -sfn "$SKILL_SRC" ~/.roo/skills/geekbot-run
 ```
 
 > `ln -sfn` forces replace-in-place. Without `-n`, re-running on an existing symlink creates a nested link instead of updating it.
