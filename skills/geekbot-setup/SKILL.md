@@ -40,17 +40,11 @@ Goal: get the user fully ready — CLI installed, CLI authenticated, and a clear
    - If `data.authenticated == true` → skip to step 6.
    - Otherwise → step 5.
 
-5. **Walk the user through auth — do NOT handle the API key in-session:**
+5. **Walk the user through auth — do NOT handle the API key in-session.** Tell them:
 
-   > Get your API key from https://app.geekbot.com/dashboard/api-webhooks
-   >
-   > Then run (in your own shell, not here):
-   >
-   > ```
-   > ! geekbot auth setup --api-key <YOUR_KEY>
-   > ```
-   >
-   > The `!` prefix runs it in your shell so the key lands in the OS keychain, not the conversation transcript.
+   - Get your API key from https://app.geekbot.com/dashboard/api-webhooks
+   - Then run (in your own shell, not here): `! geekbot auth setup --api-key <YOUR_KEY>`
+   - The `!` prefix runs it in your shell so the key lands in the OS keychain, not the conversation transcript.
 
    After the user reports back, re-run `geekbot auth status` to confirm.
 
