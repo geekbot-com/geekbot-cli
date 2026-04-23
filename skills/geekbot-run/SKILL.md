@@ -1,5 +1,5 @@
 ---
-name: geekbot
+name: geekbot-run
 description: >
   Use when the user mentions Geekbot, standups, daily check-ins, async
   reports, polls, team engagement, response rates, or participation

@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const scriptPath = join(import.meta.dir, "../../skills/geekbot/check-cli.sh");
+const scriptPath = join(import.meta.dir, "../../skills/geekbot-run/check-cli.sh");
 
-describe("skills/geekbot/check-cli.sh", () => {
+describe("skills/geekbot-run/check-cli.sh", () => {
 	test("has execute permission", () => {
 		const stat = statSync(scriptPath);
 		// Check owner execute bit (0o100)

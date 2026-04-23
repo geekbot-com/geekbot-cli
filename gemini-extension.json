@@ -1,0 +1,5 @@
+{
+	"name": "geekbot",
+	"version": "0.1.0",
+	"description": "Manage Geekbot standups, reports, and polls from Gemini CLI via the geekbot CLI"
+}

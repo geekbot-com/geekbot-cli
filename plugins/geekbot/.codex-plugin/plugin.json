@@ -1,0 +1,16 @@
+{
+	"name": "geekbot",
+	"version": "0.1.0",
+	"description": "Manage Geekbot standups, reports, and polls from Codex via the geekbot CLI",
+	"author": { "name": "Geekbot" },
+	"homepage": "https://github.com/geekbot-com/geekbot-cli",
+	"skills": "./skills/",
+	"interface": {
+		"displayName": "Geekbot",
+		"shortDescription": "Standups, reports, and polls from the command line",
+		"longDescription": "Drive the geekbot CLI conversationally from Codex. Manage standups, draft reports, run polls, and analyze team engagement.",
+		"developerName": "Geekbot",
+		"category": "Productivity",
+		"websiteURL": "https://geekbot.com"
+	}
+}
