@@ -1,0 +1,20 @@
+{
+  "name": "geekbot-cli",
+  "interface": {
+    "displayName": "Geekbot CLI"
+  },
+  "plugins": [
+    {
+      "name": "geekbot",
+      "source": {
+        "source": "local",
+        "path": "./plugins/geekbot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

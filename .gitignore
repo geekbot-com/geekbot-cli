@@ -6,6 +6,9 @@ dist/
 !.env.example
 coverage/
 
+# Plugin distribution bundle (built from .claude-plugin/, .agents/, plugins/, skills/, gemini-extension.json)
+geekbot-plugin.zip
+
 # GSD / Claude Code plugin
 .claude/get-shit-done/
 .claude/agents/gsd-*
