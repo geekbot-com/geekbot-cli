@@ -25,7 +25,7 @@ export type Question = z.output<typeof QuestionSchema>;
 const StandupRawSchema = z.object({
 	id: z.number(),
 	name: z.string(),
-	channel: z.string(),
+	channel: z.string().nullable(),
 	channel_id: z.string().optional(),
 	time: z.string(),
 	timezone: TimezoneSchema,

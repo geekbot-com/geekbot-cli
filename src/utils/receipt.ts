@@ -26,7 +26,7 @@ export function buildReceipt(
  */
 export function buildDeleteUndoCommand(standup: Standup): string {
 	const parts: string[] = [
-		`geekbot standup create --name ${shellEscape(standup.name)} --channel ${shellEscape(standup.channel)}`,
+		`geekbot standup create --name ${shellEscape(standup.name)} --channel ${shellEscape(standup.channel ?? "")}`,
 	];
 
 	if (standup.time) {
