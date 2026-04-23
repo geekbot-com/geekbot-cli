@@ -35,4 +35,8 @@ jobs:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
+      # Node 22 ships npm 10.x; OIDC trusted publishing needs 11+.
+      # Pin to npm@11 to avoid breakage on broken `latest` releases.
+      - run: npm install -g npm@11
+
       - run: npm publish --provenance --access public
