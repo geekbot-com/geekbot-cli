@@ -67,7 +67,7 @@ mock.module("../../src/output/formatter.ts", () => ({
 }));
 
 // Import handlers AFTER mocks
-const { handleAuthSetup, handleAuthStatus, handleAuthRemove } = await import(
+const { handleAuthSetup, handleAuthStatus, handleAuthRemove, handleAuthLogin } = await import(
 	"../../src/handlers/auth-handlers.ts"
 );
 const { CliError } = await import("../../src/errors/cli-error.ts");
@@ -318,6 +318,231 @@ describe("handleAuthStatus", () => {
 		} catch (e) {
 			expect((e as Error).message).toBe("network failure");
 		}
+	});
+});
+
+// ── handleAuthLogin ──────────────────────────────────────────────────
+
+describe("handleAuthLogin", () => {
+	const BASE = "https://oauth.test";
+
+	function jsonResponse(status: number, body: unknown): Response {
+		return new Response(JSON.stringify(body), {
+			status,
+			headers: { "content-type": "application/json" },
+		});
+	}
+
+	/** Builds a fake loopback server that resolves with a fixed code/state. */
+	function fakeServer(opts: { code?: string; state?: string; throwAt?: "callback" } = {}) {
+		let closed = false;
+		return {
+			port: 0,
+			redirectUri: "http://127.0.0.1:9999/callback",
+			awaitCallback: async (expectedState: string) => {
+				if (opts.throwAt === "callback") {
+					throw new CliError("access_denied", "oauth_access_denied", 4, false);
+				}
+				return { code: opts.code ?? "auth-code", state: opts.state ?? expectedState };
+			},
+			close: async () => {
+				closed = true;
+			},
+			get closed(): boolean {
+				return closed;
+			},
+		};
+	}
+
+	test("runs loopback flow, stores token, verifies via /v1/me, writes success envelope", async () => {
+		const openBrowser = mock((_url: string) => {});
+		const promptWrites: string[] = [];
+		const prompt = (text: string) => {
+			promptWrites.push(text);
+		};
+
+		const fetchImpl = mock(async () =>
+			jsonResponse(200, {
+				access_token: "cli_minted_xyz",
+				token_type: "Bearer",
+				expires_in: 2592000,
+				scope: "cli",
+			}),
+		) as unknown as typeof globalThis.fetch;
+
+		const server = fakeServer({ code: "the-auth-code" });
+
+		await handleAuthLogin(
+			{
+				deviceName: "test-device",
+				ttlDays: 30,
+				loopback: {
+					baseUrl: BASE,
+					clientId: "geekbot-cli",
+					fetchImpl,
+					openBrowser,
+					startServer: async () => server,
+					prompt,
+				},
+			},
+			GLOBAL_OPTS,
+		);
+
+		expect(mockGet).toHaveBeenCalledWith("/v1/me");
+		expect(mockSetKeychainKey).toHaveBeenCalledWith("cli_minted_xyz");
+		expect(openBrowser).toHaveBeenCalledTimes(1);
+		expect(openBrowser.mock.calls[0][0]).toContain(`${BASE}/v2/authorize`);
+		expect(openBrowser.mock.calls[0][0]).toContain("device_name=test-device");
+		expect(openBrowser.mock.calls[0][0]).toContain("ttl_days=30");
+
+		const promptText = promptWrites.join("");
+		expect(promptText).toContain("Listening on http://127.0.0.1:9999/callback");
+		expect(promptText).toContain("state is single-use");
+
+		const envelope = mockWriteOutput.mock.calls[0][0] as {
+			ok: boolean;
+			data: {
+				authenticated: boolean;
+				method: string;
+				username: string;
+				email: string;
+				token_type: string;
+				scope: string;
+			};
+		};
+		expect(envelope.ok).toBe(true);
+		expect(envelope.data.authenticated).toBe(true);
+		expect(envelope.data.method).toBe("oauth_loopback");
+		expect(envelope.data.username).toBe("testuser");
+		expect(envelope.data.email).toBe("test@example.com");
+		expect(envelope.data.token_type).toBe("Bearer");
+		expect(envelope.data.scope).toBe("cli");
+
+		expect(server.closed).toBe(true);
+	});
+
+	test("--no-browser skips opener but still completes", async () => {
+		const openBrowser = mock(() => {});
+		const fetchImpl = mock(async () =>
+			jsonResponse(200, { access_token: "cli_2" }),
+		) as unknown as typeof globalThis.fetch;
+
+		await handleAuthLogin(
+			{
+				noBrowser: true,
+				ttlDays: 30,
+				loopback: {
+					baseUrl: BASE,
+					clientId: "geekbot-cli",
+					fetchImpl,
+					openBrowser,
+					startServer: async () => fakeServer(),
+					prompt: () => {},
+				},
+			},
+			GLOBAL_OPTS,
+		);
+
+		expect(openBrowser).not.toHaveBeenCalled();
+		expect(mockSetKeychainKey).toHaveBeenCalledWith("cli_2");
+	});
+
+	test("does not store token if /v1/me verification fails", async () => {
+		mockGet.mockImplementation(() =>
+			Promise.reject(new CliError("Unauthorized", "unauthorized", 4, false)),
+		);
+		const fetchImpl = mock(async () =>
+			jsonResponse(200, { access_token: "cli_bad" }),
+		) as unknown as typeof globalThis.fetch;
+
+		try {
+			await handleAuthLogin(
+				{
+					noBrowser: true,
+					ttlDays: 30,
+					loopback: {
+						baseUrl: BASE,
+						clientId: "geekbot-cli",
+						fetchImpl,
+						openBrowser: () => {},
+						startServer: async () => fakeServer(),
+						prompt: () => {},
+					},
+				},
+				GLOBAL_OPTS,
+			);
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as InstanceType<typeof CliError>).code).toBe("unauthorized");
+		}
+
+		expect(mockSetKeychainKey).not.toHaveBeenCalled();
+	});
+
+	test("warns when replacing an existing keychain entry", async () => {
+		mockGetKeychainKey.mockReturnValue("old-key");
+		const stderrSpy = mock(() => true);
+		const origWrite = process.stderr.write;
+		process.stderr.write = stderrSpy as unknown as typeof process.stderr.write;
+
+		try {
+			const fetchImpl = mock(async () =>
+				jsonResponse(200, { access_token: "cli_new" }),
+			) as unknown as typeof globalThis.fetch;
+
+			await handleAuthLogin(
+				{
+					noBrowser: true,
+					ttlDays: 30,
+					loopback: {
+						baseUrl: BASE,
+						clientId: "geekbot-cli",
+						fetchImpl,
+						openBrowser: () => {},
+						startServer: async () => fakeServer(),
+						prompt: () => {},
+					},
+				},
+				GLOBAL_OPTS,
+			);
+
+			const text = stderrSpy.mock.calls.map((c) => String(c[0])).join("");
+			expect(text).toContain("Replacing existing API key in keychain");
+		} finally {
+			process.stderr.write = origWrite;
+		}
+	});
+
+	test("propagates access_denied from the callback step without calling /v1/me", async () => {
+		const fetchImpl = mock(async () =>
+			jsonResponse(500, { error: "should_not_be_called" }),
+		) as unknown as typeof globalThis.fetch;
+
+		try {
+			await handleAuthLogin(
+				{
+					noBrowser: true,
+					ttlDays: 30,
+					loopback: {
+						baseUrl: BASE,
+						clientId: "geekbot-cli",
+						fetchImpl,
+						openBrowser: () => {},
+						startServer: async () => fakeServer({ throwAt: "callback" }),
+						prompt: () => {},
+					},
+				},
+				GLOBAL_OPTS,
+			);
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as InstanceType<typeof CliError>).code).toBe("oauth_access_denied");
+		}
+
+		expect(mockSetKeychainKey).not.toHaveBeenCalled();
+		expect(mockGet).not.toHaveBeenCalled();
 	});
 });
 

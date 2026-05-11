@@ -61,7 +61,7 @@ Install the plugin from this repo's built-in marketplace — it bundles the CLI 
 Then run `/geekbot:geekbot-setup`. Claude will:
 
 1. Install the `geekbot` CLI globally via `npm install -g geekbot-cli` (if it isn't on your `$PATH`)
-2. Walk you through the `geekbot auth setup --api-key …` flow (you paste the key into **your own shell**, never into the conversation)
+2. Walk you through `geekbot auth login` (OAuth in your browser — no API key paste, token written to your OS keychain). Falls back to `geekbot auth setup --api-key …` if OAuth isn't available.
 3. Verify everything and report the final state
 
 The plugin ships three skills:
@@ -157,7 +157,7 @@ For first-time setup, ask in chat:
 run the geekbot setup
 ```
 
-— or handle it manually with `npm install -g geekbot-cli` and `geekbot auth setup --api-key <YOUR_KEY>` (key from https://app.geekbot.com/dashboard/api-webhooks).
+— or handle it manually with `npm install -g geekbot-cli` and `geekbot auth login` (browser OAuth), or `geekbot auth setup --api-key <YOUR_KEY>` (API key from https://app.geekbot.com/dashboard/api-webhooks).
 
 **Managing the marketplace:**
 
@@ -181,7 +181,7 @@ gemini extensions new geekbot --from geekbot-com/geekbot-cli
 
 Once linked, the skills become available. Invoke them with natural language (*"fetch my standups"*) — Gemini matches the skill's `description` frontmatter.
 
-> **Note:** Slash commands in Gemini CLI use TOML files under `commands/` (different from Claude Code / Codex). This extension does not ship slash-command TOMLs — install and auth are handled by running the CLI directly (`npm install -g geekbot-cli`, `geekbot auth setup --api-key …`) and day-to-day workflows are driven by the auto-invoked skill. Ask for it in plain English and Gemini will shell out to `geekbot`.
+> **Note:** Slash commands in Gemini CLI use TOML files under `commands/` (different from Claude Code / Codex). This extension does not ship slash-command TOMLs — install and auth are handled by running the CLI directly (`npm install -g geekbot-cli`, then `geekbot auth login` for browser OAuth or `geekbot auth setup --api-key …` for an API key) and day-to-day workflows are driven by the auto-invoked skill. Ask for it in plain English and Gemini will shell out to `geekbot`.
 
 ### Manual installation
 
@@ -207,11 +207,21 @@ geekbot --version
 
 #### 2. Authenticate
 
+Browser-based OAuth (recommended):
+
+```shell
+geekbot auth login
+```
+
+Opens your default browser, you approve in the Geekbot dashboard, and a short-lived `cli_*` token is written to your OS keychain — no API key paste, no shell history. Use `geekbot auth login --no-browser` on headless / WSL / SSH boxes; the CLI will print the authorize URL for you to open manually.
+
+API-key alternative (handy for CI or when OAuth isn't available):
+
 ```shell
 geekbot auth setup --api-key <YOUR_KEY>
 ```
 
-Grab the key at https://app.geekbot.com/dashboard/api-webhooks. It's stored in your OS keychain — no dotfiles, no plaintext.
+Grab the key at https://app.geekbot.com/dashboard/api-webhooks. Either flow stores credentials in your OS keychain — no dotfiles, no plaintext.
 
 #### 3. Register the skill with your AI agents
 
@@ -284,9 +294,25 @@ The CLI resolves API credentials using a three-level priority chain. The first s
 
 1. **`--api-key` flag** (highest priority) -- per-command override, useful for scripts and CI
 2. **`GEEKBOT_API_KEY` environment variable** -- session or shell-level credential
-3. **OS keychain** (lowest priority) -- persistent, secure storage via `geekbot auth setup`
+3. **OS keychain** (lowest priority) -- persistent, secure storage via `geekbot auth login` (OAuth) or `geekbot auth setup` (API key)
 
-### OS Keychain Storage
+### OAuth login (recommended)
+
+```shell
+geekbot auth login
+```
+
+Runs the OAuth 2.0 authorization-code flow with PKCE: the CLI starts a `127.0.0.1:<port>/callback` loopback listener, opens your default browser at `https://oauth.geekbot.com/v2/authorize?...`, and after you approve in the browser, exchanges the returned code for a short-lived `cli_*` token that is written to your OS keychain — same storage as the API-key flow. No secret is ever pasted into your terminal or shell history.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--no-browser` | -- | Print the authorize URL instead of trying to launch a browser (useful in WSL, SSH sessions, headless CI, or when piping the URL elsewhere) |
+| `--device-name <name>` | hostname | Friendly name shown on the token in the dashboard, so you can revoke it later |
+| `--ttl-days <days>` | `30` | CLI token lifetime. Allowed values: `7`, `30`, `90`, `180`, `365` |
+
+Override the OAuth endpoint via `GEEKBOT_OAUTH_BASE_URL` (must be `https://`); defaults to `https://oauth.geekbot.com`.
+
+### API-key setup (alternative)
 
 The CLI uses [`@napi-rs/keyring`](https://github.com/nicola-nicolo/keyring) to store your API key in the platform-native credential store:
 
@@ -484,6 +510,7 @@ Polls are only available for Slack-connected teams. Non-Slack teams will receive
 
 | Subcommand | Syntax | Description |
 |------------|--------|-------------|
+| `login` | `geekbot auth login [--no-browser] [--device-name <name>] [--ttl-days <days>]` | Sign in via OAuth (PKCE + loopback redirect) |
 | `setup` | `geekbot auth setup [--api-key <key>]` | Interactively configure and store API key |
 | `status` | `geekbot auth status` | Verify stored credentials work |
 | `remove` | `geekbot auth remove` | Remove stored API key from OS keychain |
@@ -723,6 +750,16 @@ bun run format
 ```shell
 bun run check
 ```
+
+### Pre-commit hook
+
+The repo ships a hook at `.githooks/pre-commit` that runs `bun run lint` and `bunx tsc --noEmit` — the same two gates CI blocks PRs on. Opt in once per clone:
+
+```shell
+git config core.hooksPath .githooks
+```
+
+To skip the hook for a single commit (avoid as a habit): `git commit --no-verify`.
 
 ### Integration tests
 

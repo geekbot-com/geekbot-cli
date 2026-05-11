@@ -30,9 +30,14 @@ describe("createAuthCommand", () => {
 		expect(cmd.name()).toBe("auth");
 	});
 
-	test("registers 3 subcommands", () => {
+	test("registers 4 subcommands", () => {
 		const cmd = createAuthCommand();
-		expect(cmd.commands.length).toBe(3);
+		expect(cmd.commands.length).toBe(4);
+	});
+
+	test("registers 'login' subcommand", () => {
+		const cmd = createAuthCommand();
+		expect(cmd.commands.find((c) => c.name() === "login")).toBeDefined();
 	});
 
 	test("registers 'setup' subcommand", () => {
