@@ -9,9 +9,10 @@ export const V2BroadcastChannelSchema = z
 
 export const V2QuestionSchema = z.object({
 	id: z.number(),
-	question: z.string(),
+	text: z.string(),
 	position: z.number(),
 	answer_type: z.string(),
+	choices: z.array(z.string()).default([]),
 });
 
 export function v2ListEnvelope<T extends z.ZodTypeAny>(item: T) {

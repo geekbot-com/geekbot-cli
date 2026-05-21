@@ -79,15 +79,33 @@
 			"questions": [
 				{
 					"text": "Thinking about this past week: how productive do you feel you were?",
-					"choices": ["Very productive", "Productive", "Neutral", "Unproductive", "Very unproductive"]
+					"choices": [
+						"Very productive",
+						"Productive",
+						"Neutral",
+						"Unproductive",
+						"Very unproductive"
+					]
 				},
 				{
 					"text": "Do you feel you've had more wins or roadblocks this past week?",
-					"choices": ["Mostly wins", "More wins than roadblocks", "Balanced", "More roadblocks than wins", "Mostly roadblocks"]
+					"choices": [
+						"Mostly wins",
+						"More wins than roadblocks",
+						"Balanced",
+						"More roadblocks than wins",
+						"Mostly roadblocks"
+					]
 				},
 				{
 					"text": "How stressful did you find work in general this week?",
-					"choices": ["Not at all stressful", "Slightly stressful", "Moderately stressful", "Very stressful", "Extremely stressful"]
+					"choices": [
+						"Not at all stressful",
+						"Slightly stressful",
+						"Moderately stressful",
+						"Very stressful",
+						"Extremely stressful"
+					]
 				},
 				{
 					"text": "How satisfied do you feel about the work you've completed this week?",
@@ -99,7 +117,12 @@
 				},
 				{
 					"text": "Overall, how do you feel about your level of work-related stress?",
-					"choices": ["Manageable", "Sometimes too much", "Often too much", "Constantly overwhelming"]
+					"choices": [
+						"Manageable",
+						"Sometimes too much",
+						"Often too much",
+						"Constantly overwhelming"
+					]
 				},
 				{
 					"text": "Do you feel you can discuss concerns with your manager as often as needed?",

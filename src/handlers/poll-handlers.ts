@@ -4,9 +4,9 @@ import { ExitCode } from "../errors/exit-codes.ts";
 import { buildNotFoundSuggestion } from "../errors/not-found-helper.ts";
 import { createAuthenticatedClient } from "../http/authenticated-client.ts";
 import type { HttpClient } from "../http/client.ts";
+import { idempotencyHeader } from "../http/idempotency.ts";
 import { success, successList } from "../output/envelope.ts";
 import { writeOutput } from "../output/formatter.ts";
-import { PollSchema } from "../schemas/poll.ts";
 import {
 	V2PollItemResponseSchema,
 	V2PollListResponseSchema,
@@ -38,6 +38,7 @@ export interface PollCreateOptions {
 	channel: string;
 	question: string;
 	choices: string;
+	duration?: string;
 }
 
 export interface PollVotesOptions {
@@ -185,7 +186,7 @@ export async function handlePollGet(
 
 /**
  * Handle `geekbot poll create` command.
- * Creates a poll via POST /v1/polls (no v2 equivalent).
+ * Creates a poll via POST /v2/polls with an auto-generated Idempotency-Key.
  */
 export async function handlePollCreate(
 	options: PollCreateOptions,
@@ -196,18 +197,32 @@ export async function handlePollCreate(
 
 		const choices = parseChoicesInput(options.choices);
 
-		const body = {
+		const body: Record<string, unknown> = {
 			name: options.name,
-			channel: options.channel,
+			broadcast_channel: options.channel,
 			question: options.question,
 			choices,
 		};
 
-		const raw = await client.post<unknown>("/v1/polls", body);
-		const poll = PollSchema.parse(raw);
+		if (options.duration !== undefined) {
+			const minutes = Number(options.duration);
+			if (!Number.isInteger(minutes) || minutes <= 0) {
+				throw new CliError(
+					`Invalid value for --duration: "${options.duration}".`,
+					"validation_error",
+					ExitCode.VALIDATION,
+					false,
+					"Pass a positive integer (minutes the poll stays open).",
+				);
+			}
+			body.duration = minutes;
+		}
+
+		const raw = await client.post<unknown>("/v2/polls", body, idempotencyHeader());
+		const parsed = V2PollItemResponseSchema.parse(raw);
 		const receipt = buildReceipt("created", null);
 
-		writeOutput(success(poll, receipt));
+		writeOutput(success(parsed.data, receipt));
 	});
 }
 

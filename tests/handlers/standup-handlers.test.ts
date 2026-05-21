@@ -233,115 +233,97 @@ describe("handleStandupGet", () => {
 
 // ── handleStandupCreate ──────────────────────────────────────────────
 
-describe("handleStandupCreate", () => {
-	const MINIMAL_OPTS = { name: "Daily", channel: "#eng", questions: '["What did you do?"]' };
+describe("handleStandupCreate (v2)", () => {
+	const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+	const MINIMAL_OPTS = { channel: "#eng", questions: '["What did you do?"]' };
 
-	test("sends POST /v1/standups with name and channel", async () => {
+	beforeEach(() => {
+		mockPost.mockImplementation(() => Promise.resolve({ data: V2_STANDUP }));
+	});
+
+	test("POSTs /v2/standups with broadcast_channel, days, time, questions", async () => {
 		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
 
 		expect(mockPost).toHaveBeenCalledTimes(1);
-		const [path, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(path).toBe("/v1/standups");
+		const call = mockPost.mock.calls[0] as [
+			string,
+			Record<string, unknown>,
+			Record<string, string>,
+		];
+		expect(call[0]).toBe("/v2/standups");
+		expect(call[1].broadcast_channel).toBe("#eng");
+		expect(call[1].time).toBe("10:00:00");
+		expect(call[1].days).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+		expect(call[1].questions).toEqual([{ text: "What did you do?" }]);
+		expect(call[2]["Idempotency-Key"]).toMatch(UUID_RE);
+	});
+
+	test("omits name when not provided (api applies default)", async () => {
+		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
+		expect("name" in body).toBe(false);
+	});
+
+	test("passes --name through", async () => {
+		await handleStandupCreate({ ...MINIMAL_OPTS, name: "Daily" }, GLOBAL_OPTS);
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
 		expect(body.name).toBe("Daily");
-		expect(body.channel).toBe("#eng");
 	});
 
-	test("uses default time 10:00 when --time omitted", async () => {
-		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
-
+	test("--time HH:MM is normalized to HH:MM:SS", async () => {
+		await handleStandupCreate({ ...MINIMAL_OPTS, time: "09:30" }, GLOBAL_OPTS);
 		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.time).toBe("10:00:00");
+		expect(body.time).toBe("09:30:00");
 	});
 
-	test("uses default weekdays when --days omitted", async () => {
-		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
-
+	test("passes --timezone through", async () => {
+		await handleStandupCreate({ ...MINIMAL_OPTS, timezone: "Europe/London" }, GLOBAL_OPTS);
 		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.days).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+		expect(body.timezone).toBe("Europe/London");
 	});
 
-	test("with only --name and --questions uses sensible defaults for time and days", async () => {
-		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
-
+	test("--questions accepts native v2 shape with choices", async () => {
+		await handleStandupCreate(
+			{
+				...MINIMAL_OPTS,
+				questions: '[{"text":"Pick","choices":["A","B"]}]',
+			},
+			GLOBAL_OPTS,
+		);
 		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.time).toBe("10:00:00");
-		expect(body.days).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
-		expect(body.questions).toEqual([{ question: "What did you do?" }]);
+		expect(body.questions).toEqual([{ text: "Pick", choices: ["A", "B"] }]);
+	});
+
+	test("--users sends explicit member list (no sync_channel)", async () => {
+		await handleStandupCreate(
+			{ ...MINIMAL_OPTS, users: "U1,U2", syncChannel: "#ignored" },
+			GLOBAL_OPTS,
+		);
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
+		expect(body.users).toEqual(["U1", "U2"]);
+		expect("sync_channel" in body).toBe(false);
+	});
+
+	test("--sync-channel sets sync_channel when no --users", async () => {
+		await handleStandupCreate({ ...MINIMAL_OPTS, syncChannel: "#alt" }, GLOBAL_OPTS);
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
+		expect(body.sync_channel).toBe("#alt");
+		expect("users" in body).toBe(false);
+	});
+
+	test("--is-anonymous sends is_anonymous=true", async () => {
+		await handleStandupCreate({ ...MINIMAL_OPTS, isAnonymous: true }, GLOBAL_OPTS);
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
+		expect(body.is_anonymous).toBe(true);
 	});
 
 	test("returns receipt with operation=created and undo=delete command", async () => {
 		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
-
 		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { operation: string; undo: string };
 		};
 		expect(envelope.metadata.operation).toBe("created");
 		expect(envelope.metadata.undo).toBe("geekbot standup delete 42 --yes");
-	});
-
-	test("validates and appends :00 to time", async () => {
-		await handleStandupCreate({ ...MINIMAL_OPTS, time: "09:30" }, GLOBAL_OPTS);
-
-		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.time).toBe("09:30:00");
-	});
-
-	test("passes timezone through", async () => {
-		await handleStandupCreate({ ...MINIMAL_OPTS, timezone: "Europe/London" }, GLOBAL_OPTS);
-
-		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.timezone).toBe("Europe/London");
-	});
-
-	test("splits and validates days", async () => {
-		await handleStandupCreate({ ...MINIMAL_OPTS, days: "Mon,Wed,Fri" }, GLOBAL_OPTS);
-
-		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.days).toEqual(["Mon", "Wed", "Fri"]);
-	});
-
-	test("parses questions JSON via parseQuestionsInput", async () => {
-		await handleStandupCreate(
-			{
-				...MINIMAL_OPTS,
-				questions: '["What did you do?", "Any blockers?"]',
-			},
-			GLOBAL_OPTS,
-		);
-
-		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.questions).toEqual([
-			{ question: "What did you do?" },
-			{ question: "Any blockers?" },
-		]);
-	});
-
-	test("splits users and sets sync_channel_members=false", async () => {
-		await handleStandupCreate({ ...MINIMAL_OPTS, users: "U1,U2,U3" }, GLOBAL_OPTS);
-
-		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.users).toEqual(["U1", "U2", "U3"]);
-		expect(body.sync_channel_members).toBe(false);
-	});
-
-	test("sets sync_channel_members=true when no users specified", async () => {
-		await handleStandupCreate(MINIMAL_OPTS, GLOBAL_OPTS);
-
-		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.sync_channel_members).toBe(true);
-	});
-
-	test("passes waitTime as number", async () => {
-		await handleStandupCreate({ ...MINIMAL_OPTS, waitTime: "15" }, GLOBAL_OPTS);
-
-		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.wait_time).toBe(15);
-	});
-
-	test("accepts Slack-style user IDs", async () => {
-		await handleStandupCreate({ ...MINIMAL_OPTS, users: "U123,U456" }, GLOBAL_OPTS);
-		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body.users).toEqual(["U123", "U456"]);
 	});
 
 	test("throws CliError for invalid user IDs", async () => {
@@ -350,20 +332,7 @@ describe("handleStandupCreate", () => {
 			expect.unreachable("should have thrown");
 		} catch (err) {
 			expect(err).toBeInstanceOf(CliError);
-			const cliErr = err as InstanceType<typeof CliError>;
-			expect(cliErr.code).toBe("validation_error");
-		}
-	});
-
-	test("throws CliError for non-numeric waitTime", async () => {
-		try {
-			await handleStandupCreate({ ...MINIMAL_OPTS, waitTime: "foo" }, GLOBAL_OPTS);
-			expect.unreachable("should have thrown");
-		} catch (err) {
-			expect(err).toBeInstanceOf(CliError);
-			const cliErr = err as InstanceType<typeof CliError>;
-			expect(cliErr.code).toBe("validation_error");
-			expect(cliErr.message).toContain("foo");
+			expect((err as InstanceType<typeof CliError>).code).toBe("validation_error");
 		}
 	});
 });

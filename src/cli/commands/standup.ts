@@ -75,18 +75,22 @@ export function createStandupCommand(): Command {
 
 	standup
 		.command("create")
-		.description("Create a new standup")
-		.requiredOption("--name <name>", "Standup name")
-		.requiredOption("--channel <channel>", "Slack channel name")
+		.description("Create a new standup (v2)")
+		.option("--name <name>", 'Standup name (default: "Standup #<broadcast channel>")')
+		.requiredOption("--channel <channel>", "Broadcast channel id or name where reports are posted")
+		.option("--sync-channel <channel>", "Channel id or name to sync members from")
 		.option("--time <time>", "Time in HH:MM 24-hour format (default: 10:00)")
-		.option("--timezone <tz>", "IANA timezone")
+		.option("--timezone <tz>", 'IANA timezone (default: "user_local")')
 		.option("--days <days>", "Comma-separated days (default: Mon-Fri)")
-		.requiredOption("--questions <json>", "Questions as JSON array")
-		.option("--users <ids>", "Comma-separated user IDs")
-		.option("--wait-time <minutes>", "Minutes between users")
+		.requiredOption(
+			"--questions <json>",
+			'Questions as JSON. Accepts ["q1","q2"] or [{"text":"q1","choices":["A","B"]}]',
+		)
+		.option("--users <ids>", "Comma-separated user IDs (mutually exclusive with --sync-channel)")
+		.option("--is-anonymous", "Make responses anonymous")
 		.addHelpText(
 			"after",
-			'\nExamples:\n  geekbot standup create --name "Daily" --channel "#engineering"\n  geekbot standup create --name "Weekly" --channel "#team" --days "Mon" --time "09:00"',
+			'\nExamples:\n  geekbot standup create --channel "#engineering" --questions \'["What did you do?","Any blockers?"]\'\n  geekbot standup create --name "Weekly" --channel "#team" --days "Mon" --time "09:00" --questions \'["q1"]\'\n  geekbot standup create --channel C123 --questions \'[{"text":"Pick","choices":["A","B"]}]\'',
 		)
 		.action(async function (this: Command) {
 			const globalOpts = getGlobalOptions(this);
@@ -96,12 +100,13 @@ export function createStandupCommand(): Command {
 					{
 						name: opts.name,
 						channel: opts.channel,
+						syncChannel: opts.syncChannel,
 						time: opts.time,
 						timezone: opts.timezone,
 						days: opts.days,
 						questions: opts.questions,
 						users: opts.users,
-						waitTime: opts.waitTime,
+						isAnonymous: opts.isAnonymous,
 					},
 					globalOpts,
 				);

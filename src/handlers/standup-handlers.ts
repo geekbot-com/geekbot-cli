@@ -4,12 +4,17 @@ import { ExitCode } from "../errors/exit-codes.ts";
 import { buildNotFoundSuggestion } from "../errors/not-found-helper.ts";
 import { createAuthenticatedClient } from "../http/authenticated-client.ts";
 import type { HttpClient } from "../http/client.ts";
+import { idempotencyHeader } from "../http/idempotency.ts";
 import { success, successList } from "../output/envelope.ts";
 import { writeOutput } from "../output/formatter.ts";
 import type { Standup } from "../schemas/standup.ts";
 import { StandupSchema } from "../schemas/standup.ts";
 import { V2StandupItemResponseSchema, V2StandupListResponseSchema } from "../schemas/v2-standup.ts";
-import { parseQuestionsInput, parseV2DateFilter } from "../utils/input-parsers.ts";
+import {
+	parseQuestionsInput,
+	parseQuestionsInputV2,
+	parseV2DateFilter,
+} from "../utils/input-parsers.ts";
 import {
 	buildDeleteUndoCommand,
 	buildReceipt,
@@ -40,14 +45,15 @@ export interface StandupListOptions {
 }
 
 export interface StandupCreateOptions {
-	name: string;
+	name?: string;
 	channel: string;
+	syncChannel?: string;
 	time?: string;
 	timezone?: string;
 	days?: string;
 	questions: string;
 	users?: string;
-	waitTime?: string;
+	isAnonymous?: boolean;
 }
 
 export interface StandupUpdateOptions {
@@ -209,7 +215,7 @@ function buildV2ListParams(
 
 /**
  * Handle `geekbot standup create` command.
- * Creates a standup via POST /v1/standups.
+ * Creates a standup via POST /v2/standups with an auto-generated Idempotency-Key.
  */
 export async function handleStandupCreate(
 	options: StandupCreateOptions,
@@ -217,7 +223,6 @@ export async function handleStandupCreate(
 ): Promise<void> {
 	const client = await createAuthenticatedClient(globalOpts);
 
-	// Apply sensible defaults for API-required fields
 	const time = options.time ?? "10:00";
 	const days = options.days ?? "Mon,Tue,Wed,Thu,Fri";
 
@@ -225,12 +230,15 @@ export async function handleStandupCreate(
 	const daysList = validateDayAbbreviations(days.split(","));
 
 	const body: Record<string, unknown> = {
-		name: options.name,
-		channel: options.channel,
+		broadcast_channel: options.channel,
 		time: `${time}:00`,
 		days: daysList,
-		questions: parseQuestionsInput(options.questions),
+		questions: parseQuestionsInputV2(options.questions),
 	};
+
+	if (options.name !== undefined) {
+		body.name = options.name;
+	}
 
 	if (options.timezone !== undefined) {
 		body.timezone = options.timezone;
@@ -238,20 +246,19 @@ export async function handleStandupCreate(
 
 	if (options.users !== undefined) {
 		body.users = validateSlackIdList(options.users, "user ID");
-		body.sync_channel_members = false;
-	} else {
-		body.sync_channel_members = true;
+	} else if (options.syncChannel !== undefined) {
+		body.sync_channel = options.syncChannel;
 	}
 
-	if (options.waitTime !== undefined) {
-		body.wait_time = validateWaitTime(options.waitTime);
+	if (options.isAnonymous === true) {
+		body.is_anonymous = true;
 	}
 
-	const raw = await client.post<unknown>("/v1/standups", body);
-	const standup = StandupSchema.parse(raw);
-	const receipt = buildReceipt("created", `geekbot standup delete ${standup.id} --yes`);
+	const raw = await client.post<unknown>("/v2/standups", body, idempotencyHeader());
+	const parsed = V2StandupItemResponseSchema.parse(raw);
+	const receipt = buildReceipt("created", `geekbot standup delete ${parsed.data.id} --yes`);
 
-	writeOutput(success(standup, receipt));
+	writeOutput(success(parsed.data, receipt));
 }
 
 /**

@@ -252,10 +252,13 @@ describe("handlePollGet", () => {
 	});
 });
 
-// ── handlePollCreate (still v1) ───────────────────────────────────────
+// ── handlePollCreate (v2) ─────────────────────────────────────────────
 
-describe("handlePollCreate", () => {
-	test("POSTs to /v1/polls (no v2 equivalent)", async () => {
+describe("handlePollCreate (v2)", () => {
+	const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+	test("POSTs /v2/polls with broadcast_channel, question, choices, Idempotency-Key", async () => {
+		mockPost.mockImplementation(() => Promise.resolve({ data: V2_POLL }));
 		await handlePollCreate(
 			{
 				name: "Test",
@@ -265,9 +268,48 @@ describe("handlePollCreate", () => {
 			},
 			GLOBAL_OPTS,
 		);
-		const [path, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
-		expect(path).toBe("/v1/polls");
-		expect(body.choices).toEqual(["A", "B"]);
+		const call = mockPost.mock.calls[0] as [
+			string,
+			Record<string, unknown>,
+			Record<string, string>,
+		];
+		expect(call[0]).toBe("/v2/polls");
+		expect(call[1].name).toBe("Test");
+		expect(call[1].broadcast_channel).toBe("#team");
+		expect(call[1].question).toBe("Q?");
+		expect(call[1].choices).toEqual(["A", "B"]);
+		expect(call[2]["Idempotency-Key"]).toMatch(UUID_RE);
+	});
+
+	test("--duration sends integer minutes", async () => {
+		mockPost.mockImplementation(() => Promise.resolve({ data: V2_POLL }));
+		await handlePollCreate(
+			{
+				name: "Test",
+				channel: "#team",
+				question: "Q?",
+				choices: '["A","B"]',
+				duration: "60",
+			},
+			GLOBAL_OPTS,
+		);
+		const [, body] = mockPost.mock.calls[0] as [string, Record<string, unknown>];
+		expect(body.duration).toBe(60);
+	});
+
+	test("rejects non-integer --duration", async () => {
+		await expect(
+			handlePollCreate(
+				{
+					name: "Test",
+					channel: "#team",
+					question: "Q?",
+					choices: '["A","B"]',
+					duration: "abc",
+				},
+				GLOBAL_OPTS,
+			),
+		).rejects.toThrow(/Invalid value for --duration/);
 	});
 });
 

@@ -69,14 +69,15 @@ export function createPollCommand(): Command {
 
 	poll
 		.command("create")
-		.description("Create a new poll")
+		.description("Create a new poll (v2)")
 		.requiredOption("--name <name>", "Poll name")
-		.requiredOption("--channel <channel>", "Slack channel")
+		.requiredOption("--channel <channel>", "Broadcast channel id or name where the poll is posted")
 		.requiredOption("--question <text>", "Poll question text")
-		.requiredOption("--choices <json>", "Choices as JSON array of strings")
+		.requiredOption("--choices <json>", "Choices as JSON array of strings (at least 2)")
+		.option("--duration <minutes>", "Duration the poll stays open, in minutes (default: 120)")
 		.addHelpText(
 			"after",
-			'\nExamples:\n  geekbot poll create --name "Lunch" --channel "#team" --question "Where?" --choices \'["Pizza", "Sushi"]\'',
+			'\nExamples:\n  geekbot poll create --name "Lunch" --channel "#team" --question "Where?" --choices \'["Pizza", "Sushi"]\'\n  geekbot poll create --name "Lunch" --channel C123 --question "Where?" --choices \'["Pizza","Sushi"]\' --duration 60',
 		)
 		.action(async function (this: Command) {
 			const globalOpts = getGlobalOptions(this);
@@ -88,6 +89,7 @@ export function createPollCommand(): Command {
 						channel: opts.channel,
 						question: opts.question,
 						choices: opts.choices,
+						duration: opts.duration,
 					},
 					globalOpts,
 				);
