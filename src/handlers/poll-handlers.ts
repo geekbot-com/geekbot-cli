@@ -6,12 +6,32 @@ import { createAuthenticatedClient } from "../http/authenticated-client.ts";
 import type { HttpClient } from "../http/client.ts";
 import { success, successList } from "../output/envelope.ts";
 import { writeOutput } from "../output/formatter.ts";
-import { PollListSchema, PollSchema, PollVotesResponseSchema } from "../schemas/poll.ts";
-import { parseChoicesInput, parseDateFilter } from "../utils/input-parsers.ts";
+import { PollSchema } from "../schemas/poll.ts";
+import {
+	V2PollItemResponseSchema,
+	V2PollListResponseSchema,
+	V2PollVotesResponseSchema,
+} from "../schemas/v2-poll.ts";
+import { parseChoicesInput, parseV2DateFilter } from "../utils/input-parsers.ts";
 import { buildReceipt } from "../utils/receipt.ts";
-import { validateNumericId } from "../utils/validation.ts";
+import { validateLimit, validateNumericId } from "../utils/validation.ts";
 
 // ── Option Interfaces ─────────────────────────────────────────────────
+
+export interface PollListOptions {
+	state?: string;
+	isAnonymous?: string;
+	broadcastChannel?: string;
+	createdSince?: string;
+	createdUntil?: string;
+	cursor?: string;
+	pageSize?: string;
+	include?: string;
+}
+
+export interface PollGetOptions {
+	include?: string;
+}
 
 export interface PollCreateOptions {
 	name: string;
@@ -40,13 +60,11 @@ async function wrapPlatformError(fn: () => Promise<void>): Promise<void> {
 	try {
 		await fn();
 	} catch (error) {
-		// Only intercept errors with code "not_found" — enriched "poll_not_found"
-		// errors from enrichPollNotFound pass through without being re-mapped.
 		if (
 			error instanceof CliError &&
 			error.code === "not_found" &&
 			error.context?.path &&
-			String(error.context.path).startsWith("/v1/polls")
+			/^\/v[12]\/polls/.test(String(error.context.path))
 		) {
 			throw new CliError(
 				"Polls are only available for Slack teams. Your team appears to use a different platform.",
@@ -92,42 +110,82 @@ async function enrichPollNotFound(
 	}
 }
 
+function buildParams(
+	input: Record<string, string | undefined>,
+): Record<string, string> | undefined {
+	const out: Record<string, string> = {};
+	for (const [k, v] of Object.entries(input)) {
+		if (v !== undefined && v !== "") {
+			out[k] = v;
+		}
+	}
+	return Object.keys(out).length > 0 ? out : undefined;
+}
+
 // ── Handlers ──────────────────────────────────────────────────────────
 
 /**
  * Handle `geekbot poll list` command.
- * Fetches polls from GET /v1/polls.
+ * Fetches polls from GET /v2/polls (cursor-paginated, single page per call).
  */
-export async function handlePollList(globalOpts: GlobalOptions): Promise<void> {
+export async function handlePollList(
+	options: PollListOptions,
+	globalOpts: GlobalOptions,
+): Promise<void> {
 	await wrapPlatformError(async () => {
 		const client = await createAuthenticatedClient(globalOpts);
 
-		const raw = await client.get<unknown>("/v1/polls");
-		const polls = PollListSchema.parse(raw);
+		const params = buildParams({
+			state: options.state,
+			is_anonymous: options.isAnonymous,
+			broadcast_channel: options.broadcastChannel,
+			created_since: options.createdSince
+				? parseV2DateFilter(options.createdSince, "--created-since")
+				: undefined,
+			created_until: options.createdUntil
+				? parseV2DateFilter(options.createdUntil, "--created-until")
+				: undefined,
+			cursor: options.cursor,
+			limit: options.pageSize ? String(validateLimit(options.pageSize)) : undefined,
+			include: options.include,
+		});
 
-		writeOutput(successList(polls));
+		const raw = await client.get<unknown>("/v2/polls", params);
+		const parsed = V2PollListResponseSchema.parse(raw);
+
+		writeOutput(
+			successList(parsed.data, {
+				next_cursor: parsed.next_cursor,
+				has_more: parsed.has_more,
+			}),
+		);
 	});
 }
 
 /**
  * Handle `geekbot poll get` command.
- * Fetches a single poll by ID from GET /v1/polls/<id>.
+ * Fetches a single poll by ID from GET /v2/polls/<id>.
  */
-export async function handlePollGet(id: string, globalOpts: GlobalOptions): Promise<void> {
+export async function handlePollGet(
+	id: string,
+	options: PollGetOptions,
+	globalOpts: GlobalOptions,
+): Promise<void> {
 	const numericId = validateNumericId(id, "poll ID");
 
 	await wrapPlatformError(async () => {
 		await enrichPollNotFound(async (client) => {
-			const raw = await client.get<unknown>(`/v1/polls/${numericId}`);
-			const poll = PollSchema.parse(raw);
-			writeOutput(success(poll));
+			const params = buildParams({ include: options.include });
+			const raw = await client.get<unknown>(`/v2/polls/${numericId}`, params);
+			const parsed = V2PollItemResponseSchema.parse(raw);
+			writeOutput(success(parsed.data));
 		}, globalOpts);
 	});
 }
 
 /**
  * Handle `geekbot poll create` command.
- * Creates a poll via POST /v1/polls.
+ * Creates a poll via POST /v1/polls (no v2 equivalent).
  */
 export async function handlePollCreate(
 	options: PollCreateOptions,
@@ -155,8 +213,8 @@ export async function handlePollCreate(
 
 /**
  * Handle `geekbot poll votes` command.
- * Fetches voting results from GET /v1/polls/<id>/votes.
- * Maps CLI --after/--before to API from/to params.
+ * Fetches voting results from GET /v2/polls/<id>/votes.
+ * Maps CLI --after/--before to v2 since/until params.
  */
 export async function handlePollVotes(
 	id: string,
@@ -167,21 +225,15 @@ export async function handlePollVotes(
 
 	await wrapPlatformError(async () => {
 		await enrichPollNotFound(async (client) => {
-			const params: Record<string, string> = {};
-			if (options.after) {
-				params.from = parseDateFilter(options.after, "--after");
-			}
-			if (options.before) {
-				params.to = parseDateFilter(options.before, "--before");
-			}
+			const params = buildParams({
+				since: options.after ? parseV2DateFilter(options.after, "--after") : undefined,
+				until: options.before ? parseV2DateFilter(options.before, "--before") : undefined,
+			});
 
-			const raw = await client.get<unknown>(
-				`/v1/polls/${numericId}/votes`,
-				Object.keys(params).length > 0 ? params : undefined,
-			);
-			const votesResponse = PollVotesResponseSchema.parse(raw);
+			const raw = await client.get<unknown>(`/v2/polls/${numericId}/votes`, params);
+			const parsed = V2PollVotesResponseSchema.parse(raw);
 
-			writeOutput(success(votesResponse));
+			writeOutput(success(parsed.data));
 		}, globalOpts);
 	});
 }

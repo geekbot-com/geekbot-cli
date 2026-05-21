@@ -17,17 +17,19 @@ export function createStandupCommand(): Command {
 
 	standup
 		.command("list")
-		.description("List standups you participate in")
-		.option("--admin", "Include all team standups (admin only)")
-		.option("--brief", "Show only id, name, channel, time, timezone, and days")
-		.option("--name <name>", "Filter by name (case-insensitive substring match)")
-		.option("--channel <channel>", "Filter by channel (case-insensitive substring match)")
-		.option("--mine", "Show only standups you are a member of")
-		.option("--member <id>", "Filter by member user ID")
-		.option("--limit <n>", "Max number of standups to return")
+		.description("List standups visible to you (v2)")
+		.option("--state <states>", "Comma-separated subset of: active, paused")
+		.option("--is-anonymous <bool>", "Filter by anonymity (true|false)")
+		.option("--broadcast-channel <id>", "Restrict to a specific channel id (e.g. C12345)")
+		.option("--created-since <date>", "ISO 8601 or YYYY-MM-DD (inclusive)")
+		.option("--created-until <date>", "ISO 8601 or YYYY-MM-DD (exclusive)")
+		.option("--cursor <token>", "Opaque pagination cursor from a previous response")
+		.option("--page-size <n>", "Page size (1-100, default 25)")
+		.option("--include <fields>", "Comma-separated extras: questions")
+		.option("--name <name>", "Client-side substring filter on name (applied after fetch)")
 		.addHelpText(
 			"after",
-			'\nExamples:\n  geekbot standup list\n  geekbot standup list --admin\n  geekbot standup list --brief\n  geekbot standup list --brief --limit 10\n  geekbot standup list --name "daily"\n  geekbot standup list --channel "#status"\n  geekbot standup list --mine --brief\n  geekbot standup list --member "UHNM44125" --brief',
+			"\nExamples:\n  geekbot standup list\n  geekbot standup list --state active --page-size 50\n  geekbot standup list --include questions\n  geekbot standup list --broadcast-channel C0123ABCD",
 		)
 		.action(async function (this: Command) {
 			const globalOpts = getGlobalOptions(this);
@@ -35,13 +37,15 @@ export function createStandupCommand(): Command {
 				const opts = this.opts();
 				await handleStandupList(
 					{
-						admin: opts.admin,
-						brief: opts.brief,
+						state: opts.state,
+						isAnonymous: opts.isAnonymous,
+						broadcastChannel: opts.broadcastChannel,
+						createdSince: opts.createdSince,
+						createdUntil: opts.createdUntil,
+						cursor: opts.cursor,
+						pageSize: opts.pageSize,
+						include: opts.include,
 						name: opts.name,
-						channel: opts.channel,
-						mine: opts.mine,
-						member: opts.member,
-						limit: opts.limit,
 					},
 					globalOpts,
 				);
@@ -52,13 +56,18 @@ export function createStandupCommand(): Command {
 
 	standup
 		.command("get")
-		.description("Get a standup by ID")
+		.description("Get a standup by ID (v2)")
 		.argument("<id>", "Standup ID (numeric)")
-		.addHelpText("after", "\nExamples:\n  geekbot standup get 123")
+		.option("--include <fields>", "Comma-separated extras: questions")
+		.addHelpText(
+			"after",
+			"\nExamples:\n  geekbot standup get 123\n  geekbot standup get 123 --include questions",
+		)
 		.action(async function (this: Command, id: string) {
 			const globalOpts = getGlobalOptions(this);
 			try {
-				await handleStandupGet(id, globalOpts);
+				const opts = this.opts();
+				await handleStandupGet(id, { include: opts.include }, globalOpts);
 			} catch (error) {
 				handleError(error, globalOpts.debug);
 			}

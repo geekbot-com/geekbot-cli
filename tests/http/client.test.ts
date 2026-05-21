@@ -191,6 +191,37 @@ describe("PATCH requests", () => {
 	});
 });
 
+describe("per-request headers", () => {
+	test("post merges extra headers with defaults", async () => {
+		spy.mockResolvedValueOnce(jsonResponse({}));
+		const c = client();
+		await c.post("/v2/reports", { x: 1 }, { "Idempotency-Key": "uuid-123" });
+
+		const [, init] = spy.calls[0] as FetchArgs;
+		const headers = init?.headers as Record<string, string>;
+		expect(headers["Idempotency-Key"]).toBe("uuid-123");
+		// Defaults still present
+		expect(headers.Authorization).toBeDefined();
+		expect(headers["Content-Type"]).toBe("application/json");
+	});
+
+	test("patch attaches Idempotency-Key", async () => {
+		spy.mockResolvedValueOnce(jsonResponse({}));
+		const c = client();
+		await c.patch("/v2/reports/1", { x: 1 }, { "Idempotency-Key": "abc" });
+		const [, init] = spy.calls[0] as FetchArgs;
+		expect((init?.headers as Record<string, string>)["Idempotency-Key"]).toBe("abc");
+	});
+
+	test("delete attaches Idempotency-Key", async () => {
+		spy.mockResolvedValueOnce(new Response(null, { status: 204 }));
+		const c = client();
+		await c.delete("/v2/reports/1", { "Idempotency-Key": "def" });
+		const [, init] = spy.calls[0] as FetchArgs;
+		expect((init?.headers as Record<string, string>)["Idempotency-Key"]).toBe("def");
+	});
+});
+
 describe("PUT requests", () => {
 	test("calls fetch with PUT method and stringified body", async () => {
 		spy.mockResolvedValueOnce(jsonResponse({ id: 42, name: "Replaced" }));

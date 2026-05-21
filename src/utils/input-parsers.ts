@@ -232,3 +232,35 @@ export function parseDateFilter(raw: string, label: string): string {
 
 	return String(Math.floor(date.getTime() / 1000));
 }
+
+/**
+ * Validate a date filter for v2 API endpoints.
+ *
+ * v2 accepts YYYY-MM-DD or ISO 8601 datetime strings; unix timestamps are rejected
+ * because the v2 ListQuery parser expects RFC 3339 / YYYY-MM-DD format.
+ * Returns the input unchanged after validation so it can be passed as-is.
+ */
+export function parseV2DateFilter(raw: string, label: string): string {
+	// Accept YYYY-MM-DD (delegate calendar validation to parseDateFilter)
+	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+		// Reuse parseDateFilter's calendar validation — discard its unix-timestamp output.
+		parseDateFilter(raw, label);
+		return raw;
+	}
+
+	// Accept ISO 8601 datetime: 2026-01-15T10:00:00Z or 2026-01-15T10:00:00+02:00
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/.test(raw)) {
+		const d = new Date(raw);
+		if (!Number.isNaN(d.getTime())) {
+			return raw;
+		}
+	}
+
+	throw new CliError(
+		`Invalid date for ${label}: "${raw}".`,
+		"validation_error",
+		ExitCode.VALIDATION,
+		false,
+		"Accepted formats: YYYY-MM-DD (2026-01-15) or ISO 8601 (2026-01-15T10:00:00Z)",
+	);
+}

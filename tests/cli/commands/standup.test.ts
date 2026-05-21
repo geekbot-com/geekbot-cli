@@ -90,19 +90,6 @@ describe("createStandupCommand", () => {
 		expect(mockHandlers.handleStandupList).toHaveBeenCalled();
 	});
 
-	test("list subcommand passes --brief flag to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--brief", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ brief: true }),
-			expect.anything(),
-		);
-	});
-
 	test("list subcommand passes --name filter to handler", async () => {
 		const program = new Command();
 		addGlobalOptions(program);
@@ -116,46 +103,7 @@ describe("createStandupCommand", () => {
 		);
 	});
 
-	test("list subcommand passes --channel filter to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--channel", "#status", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ channel: "#status" }),
-			expect.anything(),
-		);
-	});
-
-	test("list subcommand passes --mine flag to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--mine", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ mine: true }),
-			expect.anything(),
-		);
-	});
-
-	test("list subcommand passes --member flag to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--member", "UHNM44125", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ member: "UHNM44125" }),
-			expect.anything(),
-		);
-	});
-
-	test("list subcommand passes all filter options together", async () => {
+	test("list subcommand passes v2 server-side filters to handler", async () => {
 		const program = new Command();
 		addGlobalOptions(program);
 		program.addCommand(createStandupCommand());
@@ -163,13 +111,20 @@ describe("createStandupCommand", () => {
 			[
 				"standup",
 				"list",
-				"--admin",
-				"--brief",
-				"--name",
-				"daily",
-				"--mine",
-				"--member",
-				"U123",
+				"--state",
+				"active",
+				"--is-anonymous",
+				"true",
+				"--broadcast-channel",
+				"C123ABC",
+				"--created-since",
+				"2026-01-01",
+				"--cursor",
+				"opaque",
+				"--page-size",
+				"50",
+				"--include",
+				"questions",
 				"--api-key",
 				"test",
 			],
@@ -177,11 +132,13 @@ describe("createStandupCommand", () => {
 		);
 		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
 			expect.objectContaining({
-				admin: true,
-				brief: true,
-				name: "daily",
-				mine: true,
-				member: "U123",
+				state: "active",
+				isAnonymous: "true",
+				broadcastChannel: "C123ABC",
+				createdSince: "2026-01-01",
+				cursor: "opaque",
+				pageSize: "50",
+				include: "questions",
 			}),
 			expect.anything(),
 		);

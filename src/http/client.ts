@@ -8,10 +8,10 @@ const INITIAL_BACKOFF_MS = 1000;
 
 export interface HttpClient {
 	get<T>(path: string, params?: Record<string, string>): Promise<T>;
-	post<T>(path: string, body: unknown): Promise<T>;
-	patch<T>(path: string, body: unknown): Promise<T>;
-	put<T>(path: string, body: unknown): Promise<T>;
-	delete(path: string): Promise<null>;
+	post<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T>;
+	patch<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T>;
+	put<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T>;
+	delete(path: string, headers?: Record<string, string>): Promise<null>;
 }
 
 export function createHttpClient(
@@ -27,6 +27,7 @@ export function createHttpClient(
 		path: string,
 		body?: unknown,
 		params?: Record<string, string>,
+		extraHeaders?: Record<string, string>,
 	): Promise<T> {
 		// Strip trailing slashes to avoid 301 redirects (API quirk)
 		const cleanPath = path.replace(/\/+$/, "");
@@ -60,6 +61,7 @@ export function createHttpClient(
 						Authorization: apiKey,
 						"Content-Type": "application/json",
 						"User-Agent": `geekbot-skill-cli/${APP_VERSION}`,
+						...(extraHeaders ?? {}),
 					},
 					body: body !== undefined ? JSON.stringify(body) : undefined,
 				});
@@ -130,9 +132,13 @@ export function createHttpClient(
 	return {
 		get: <T>(path: string, params?: Record<string, string>) =>
 			request<T>("GET", path, undefined, params),
-		post: <T>(path: string, body: unknown) => request<T>("POST", path, body),
-		patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
-		put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
-		delete: (path: string) => request<null>("DELETE", path),
+		post: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+			request<T>("POST", path, body, undefined, headers),
+		patch: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+			request<T>("PATCH", path, body, undefined, headers),
+		put: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+			request<T>("PUT", path, body, undefined, headers),
+		delete: (path: string, headers?: Record<string, string>) =>
+			request<null>("DELETE", path, undefined, undefined, headers),
 	};
 }

@@ -66,14 +66,46 @@ describe("createPollCommand", () => {
 		expect(mockHandlers.handlePollList).toHaveBeenCalled();
 	});
 
-	test("get subcommand calls handlePollGet", async () => {
+	test("list subcommand passes v2 server-side filters to handler", async () => {
 		const program = new Command();
 		addGlobalOptions(program);
 		program.addCommand(createPollCommand());
-		await program.parseAsync(["poll", "get", "42", "--api-key", "test"], {
+		await program.parseAsync(
+			[
+				"poll",
+				"list",
+				"--state",
+				"active",
+				"--page-size",
+				"25",
+				"--include",
+				"questions",
+				"--api-key",
+				"test",
+			],
+			{ from: "user" },
+		);
+		expect(mockHandlers.handlePollList).toHaveBeenCalledWith(
+			expect.objectContaining({
+				state: "active",
+				pageSize: "25",
+				include: "questions",
+			}),
+			expect.anything(),
+		);
+	});
+
+	test("get subcommand calls handlePollGet with include flag", async () => {
+		const program = new Command();
+		addGlobalOptions(program);
+		program.addCommand(createPollCommand());
+		await program.parseAsync(["poll", "get", "42", "--include", "questions", "--api-key", "test"], {
 			from: "user",
 		});
 		expect(mockHandlers.handlePollGet).toHaveBeenCalled();
+		const [id, opts] = mockHandlers.handlePollGet.mock.calls[0] as [string, { include?: string }];
+		expect(id).toBe("42");
+		expect(opts.include).toBe("questions");
 	});
 
 	test("create subcommand calls handlePollCreate", async () => {

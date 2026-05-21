@@ -2,14 +2,16 @@ import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 // --- Mocks ---
 
-const mockGet = mock(() => Promise.resolve([]));
-const mockPost = mock(() => Promise.resolve({}));
+const mockGet = mock(() => Promise.resolve({ data: [], next_cursor: null, has_more: false }));
+const mockPost = mock(() => Promise.resolve({ data: {} }));
+const mockPatch = mock(() => Promise.resolve({ data: {} }));
+const mockDelete = mock(() => Promise.resolve(null));
 const mockCreateHttpClient = mock(() => ({
 	get: mockGet,
 	post: mockPost,
-	patch: mock(),
+	patch: mockPatch,
 	put: mock(),
-	delete: mock(),
+	delete: mockDelete,
 }));
 
 mock.module("../../src/http/client.ts", () => ({
@@ -20,14 +22,19 @@ mock.module("../../src/auth/resolver.ts", () => ({
 	resolveCredential: mock(() => Promise.resolve({ apiKey: "test-key", source: "env" })),
 }));
 
-// Capture writeOutput calls
 const mockWriteOutput = mock(() => {});
 mock.module("../../src/output/formatter.ts", () => ({
 	writeOutput: mockWriteOutput,
 }));
 
 import type { GlobalOptions } from "../../src/cli/globals.ts";
-import { handleReportCreate, handleReportList } from "../../src/handlers/report-handlers.ts";
+import {
+	handleReportCreate,
+	handleReportDelete,
+	handleReportEdit,
+	handleReportGet,
+	handleReportList,
+} from "../../src/handlers/report-handlers.ts";
 
 const defaultGlobalOpts: GlobalOptions = {
 	apiKey: undefined,
@@ -35,333 +42,158 @@ const defaultGlobalOpts: GlobalOptions = {
 	debug: false,
 };
 
-// Sample timeline report from API (raw, before schema transform)
-const sampleTimelineReport = {
+const sampleV2Report = {
 	id: 1001,
 	standup_id: 42,
-	timestamp: 1705312800,
-	slack_ts: "1705312800.000000",
-	channel: "general",
-	questions: [
-		{
-			id: 201,
-			question: "What did you do?",
-			answer: "Built feature X",
-			answer_type: "text",
-			images: [],
-			color: "",
-		},
-	],
-	member: {
-		id: "U123",
-		username: "alice",
-		realname: "Alice Smith",
-		profileImg: "https://example.com/alice.jpg",
-	},
-	is_anonymous: false,
 	standup_name: "Daily Standup",
-};
-
-// Sample submitted report from API (raw, before schema transform)
-const sampleSubmittedReport = {
-	id: 2001,
-	standup_id: 42,
-	timestamp: 1705316400,
-	slack_ts: null,
-	started_at: 1705316400,
-	done_at: 1705316400,
-	broadcasted_at: null,
-	channel: "general",
+	user_id: "U123",
+	posted_at: "2026-05-20T10:00:00+00:00",
+	is_anonymous: false,
+	is_confidential: false,
 	answers: [
 		{
 			id: 201,
+			question_id: 301,
 			question: "What did you do?",
-			answer: "Implemented Y",
-			answer_type: "text",
-			images: [],
-			color: "",
+			answer: "Built feature X",
 		},
 	],
-	is_anonymous: false,
 };
 
 afterAll(() => {
 	mock.restore();
 });
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function resetMocks() {
+	mockGet.mockClear();
+	mockPost.mockClear();
+	mockPatch.mockClear();
+	mockDelete.mockClear();
+	mockCreateHttpClient.mockClear();
+	mockWriteOutput.mockClear();
+	mockGet.mockImplementation(() =>
+		Promise.resolve({ data: [sampleV2Report], next_cursor: null, has_more: false }),
+	);
+	mockPost.mockImplementation(() => Promise.resolve({ data: sampleV2Report }));
+	mockPatch.mockImplementation(() => Promise.resolve({ data: sampleV2Report }));
+	mockDelete.mockImplementation(() => Promise.resolve(null));
+}
+
 describe("handleReportList", () => {
-	beforeEach(() => {
-		mockGet.mockClear();
-		mockPost.mockClear();
-		mockCreateHttpClient.mockClear();
-		mockWriteOutput.mockClear();
-	});
+	beforeEach(resetMocks);
 
-	test("calls GET /v1/reports with no params when no filters", async () => {
-		mockGet.mockResolvedValueOnce([sampleTimelineReport]);
-
+	test("calls GET /v2/reports without params when no filters", async () => {
 		await handleReportList({}, defaultGlobalOpts);
-
-		expect(mockGet).toHaveBeenCalledTimes(1);
-		const [path, params] = mockGet.mock.calls[0];
-		expect(path).toBe("/v1/reports");
-		expect(params).toEqual({});
+		expect(mockGet).toHaveBeenCalledWith("/v2/reports", undefined);
 	});
 
-	test("passes standup_id query param when --standup-id given", async () => {
-		mockGet.mockResolvedValueOnce([sampleTimelineReport]);
-
-		await handleReportList({ standupId: "123" }, defaultGlobalOpts);
-
-		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("standup_id", "123");
+	test("maps --before/--after to v2 until/since", async () => {
+		await handleReportList({ before: "2026-01-31", after: "2026-01-01" }, defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/reports", {
+			until: "2026-01-31",
+			since: "2026-01-01",
+		});
 	});
 
-	test("passes user_id query param when --user-id given", async () => {
-		mockGet.mockResolvedValueOnce([sampleTimelineReport]);
-
-		await handleReportList({ userId: "UHNM44125" }, defaultGlobalOpts);
-
-		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("user_id", "UHNM44125");
-	});
-
-	test("converts ISO date to unix timestamp for --before", async () => {
-		mockGet.mockResolvedValueOnce([]);
-
-		await handleReportList({ before: "2024-01-15" }, defaultGlobalOpts);
-
-		const [, params] = mockGet.mock.calls[0];
-		// parseDateFilter converts ISO to unix timestamp
-		expect(params).toHaveProperty("before");
-		// Should be a numeric string (unix timestamp)
-		expect(/^\d+$/.test(params.before)).toBe(true);
-	});
-
-	test("passes unix timestamp as-is for --after", async () => {
-		mockGet.mockResolvedValueOnce([]);
-
-		await handleReportList({ after: "1705276800" }, defaultGlobalOpts);
-
-		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("after", "1705276800");
-	});
-
-	test("passes limit query param", async () => {
-		mockGet.mockResolvedValueOnce([]);
-
-		await handleReportList({ limit: "10" }, defaultGlobalOpts);
-
-		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("limit", "10");
-	});
-
-	test("passes all filter params simultaneously", async () => {
-		mockGet.mockResolvedValueOnce([]);
-
+	test("passes --view, --page-size, --cursor through to v2", async () => {
 		await handleReportList(
-			{
-				standupId: "42",
-				userId: "U99ABC",
-				before: "1705363200",
-				after: "1705276800",
-				limit: "5",
-			},
+			{ view: "summary", pageSize: "50", cursor: "abc123" },
 			defaultGlobalOpts,
 		);
-
-		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("standup_id", "42");
-		expect(params).toHaveProperty("user_id", "U99ABC");
-		expect(params).toHaveProperty("before", "1705363200");
-		expect(params).toHaveProperty("after", "1705276800");
-		expect(params).toHaveProperty("limit", "5");
+		expect(mockGet).toHaveBeenCalledWith("/v2/reports", {
+			view: "summary",
+			limit: "50",
+			cursor: "abc123",
+		});
 	});
 
-	test("rejects non-numeric limit value", async () => {
-		await expect(handleReportList({ limit: "abc" }, defaultGlobalOpts)).rejects.toThrow(
-			"Invalid limit",
+	test("--limit is an alias for --page-size", async () => {
+		await handleReportList({ limit: "75" }, defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/reports", { limit: "75" });
+	});
+
+	test("rejects invalid --view", async () => {
+		await expect(handleReportList({ view: "bogus" }, defaultGlobalOpts)).rejects.toThrow(
+			/Invalid value for --view/,
 		);
-
-		expect(mockGet).not.toHaveBeenCalled();
 	});
 
-	test("rejects negative limit value", async () => {
-		await expect(handleReportList({ limit: "-5" }, defaultGlobalOpts)).rejects.toThrow(
-			"Invalid limit",
+	test("surfaces next_cursor and has_more in writeOutput metadata", async () => {
+		mockGet.mockImplementation(() =>
+			Promise.resolve({ data: [sampleV2Report], next_cursor: "next-token", has_more: true }),
 		);
-
-		expect(mockGet).not.toHaveBeenCalled();
-	});
-
-	test("rejects zero limit value", async () => {
-		await expect(handleReportList({ limit: "0" }, defaultGlobalOpts)).rejects.toThrow(
-			"Invalid limit",
-		);
-
-		expect(mockGet).not.toHaveBeenCalled();
-	});
-
-	test("passes standup_id, user_id, and limit together without date params", async () => {
-		mockGet.mockResolvedValueOnce([]);
-
-		await handleReportList({ standupId: "123", userId: "U456ABC", limit: "10" }, defaultGlobalOpts);
-
-		const [path, params] = mockGet.mock.calls[0];
-		expect(path).toBe("/v1/reports");
-		expect(params).toEqual({ standup_id: "123", user_id: "U456ABC", limit: "10" });
-	});
-
-	test("passes date range params without standup_id or user_id", async () => {
-		mockGet.mockResolvedValueOnce([]);
-
-		await handleReportList({ after: "1705276800", before: "1705363200" }, defaultGlobalOpts);
-
-		const [path, params] = mockGet.mock.calls[0];
-		expect(path).toBe("/v1/reports");
-		expect(params).toEqual({ after: "1705276800", before: "1705363200" });
-	});
-
-	test("rejects decimal limit value", async () => {
-		await expect(handleReportList({ limit: "1.5" }, defaultGlobalOpts)).rejects.toThrow(
-			"Invalid limit",
-		);
-
-		expect(mockGet).not.toHaveBeenCalled();
-	});
-
-	test("accepts scientific notation limit as valid integer", async () => {
-		mockGet.mockResolvedValueOnce([]);
-
-		await handleReportList({ limit: "1e10" }, defaultGlobalOpts);
-
-		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("limit", "10000000000");
-	});
-
-	test("accepts very large integer limit", async () => {
-		mockGet.mockResolvedValueOnce([]);
-
-		await handleReportList({ limit: "999999999" }, defaultGlobalOpts);
-
-		const [, params] = mockGet.mock.calls[0];
-		expect(params).toHaveProperty("limit", "999999999");
-	});
-
-	test("writes successList envelope with parsed reports", async () => {
-		mockGet.mockResolvedValueOnce([sampleTimelineReport]);
-
 		await handleReportList({}, defaultGlobalOpts);
-
-		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
-		const envelope = mockWriteOutput.mock.calls[0][0];
-		expect(envelope.ok).toBe(true);
-		expect(Array.isArray(envelope.data)).toBe(true);
-		expect(envelope.data.length).toBe(1);
-		expect(envelope.data[0].id).toBe(1001);
-		expect(envelope.data[0].member).not.toBeNull();
-	});
-
-	test("parses reports with image objects in answers", async () => {
-		const reportWithImages = {
-			...sampleTimelineReport,
-			questions: [
-				{
-					id: 201,
-					question: "What did you do?",
-					answer: "Built feature X",
-					answer_type: "text",
-					images: [{ title: "screenshot", image_url: "https://example.com/img.png" }],
-					color: "",
-				},
-			],
-		};
-		mockGet.mockResolvedValueOnce([reportWithImages]);
-
-		await handleReportList({}, defaultGlobalOpts);
-
-		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
-		const envelope = mockWriteOutput.mock.calls[0][0];
-		expect(envelope.ok).toBe(true);
-		expect(envelope.data[0].questions[0].images).toEqual([
-			{ title: "screenshot", image_url: "https://example.com/img.png" },
-		]);
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as { metadata: Record<string, unknown> };
+		expect(envelope.metadata.next_cursor).toBe("next-token");
+		expect(envelope.metadata.has_more).toBe(true);
 	});
 });
 
 describe("handleReportCreate", () => {
-	beforeEach(() => {
-		mockGet.mockClear();
-		mockPost.mockClear();
-		mockCreateHttpClient.mockClear();
-		mockWriteOutput.mockClear();
-	});
+	beforeEach(resetMocks);
 
-	test("parses shorthand answers and sends POST with correct body", async () => {
-		mockPost.mockResolvedValueOnce(sampleSubmittedReport);
-
-		await handleReportCreate(
-			{
-				standupId: "123",
-				answers: '{"101":"Done X"}',
-			},
-			defaultGlobalOpts,
-		);
-
-		expect(mockPost).toHaveBeenCalledTimes(1);
-		const [path, body] = mockPost.mock.calls[0];
-		expect(path).toBe("/v1/reports");
-		expect(body).toEqual({
-			standup_id: 123,
-			answers: { "101": { text: "Done X" } },
+	test("POST /v2/reports with answers array and Idempotency-Key header", async () => {
+		await handleReportCreate({ standupId: "42", answers: '{"301":"Done X"}' }, defaultGlobalOpts);
+		const call = mockPost.mock.calls[0] as [string, unknown, Record<string, string>];
+		expect(call[0]).toBe("/v2/reports");
+		expect(call[1]).toEqual({
+			standup_id: 42,
+			answers: [{ question_id: 301, text: "Done X" }],
 		});
+		expect(call[2]["Idempotency-Key"]).toMatch(UUID_RE);
 	});
 
-	test("receipt has operation=created and undo=null", async () => {
-		mockPost.mockResolvedValueOnce(sampleSubmittedReport);
-
-		await handleReportCreate(
-			{
-				standupId: "42",
-				answers: '{"201":"Built feature"}',
-			},
-			defaultGlobalOpts,
-		);
-
-		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
-		const envelope = mockWriteOutput.mock.calls[0][0];
-		expect(envelope.ok).toBe(true);
-		expect(envelope.metadata.operation).toBe("created");
-		expect(envelope.metadata.undo).toBeNull();
-	});
-
-	test("validates standup_id is numeric before API call", async () => {
+	test("rejects --answers with non-numeric question ids", async () => {
 		await expect(
-			handleReportCreate(
-				{
-					standupId: "abc",
-					answers: '{"101":"Done X"}',
-				},
-				defaultGlobalOpts,
-			),
-		).rejects.toThrow();
+			handleReportCreate({ standupId: "42", answers: '{"abc":"x"}' }, defaultGlobalOpts),
+		).rejects.toThrow(/Invalid question id "abc"/);
+	});
+});
 
-		// Should not have made an API call
-		expect(mockPost).not.toHaveBeenCalled();
+describe("handleReportGet", () => {
+	beforeEach(resetMocks);
+
+	test("GET /v2/reports/{id} with no params by default", async () => {
+		mockGet.mockImplementation(() => Promise.resolve({ data: sampleV2Report }));
+		await handleReportGet("1001", {}, defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/reports/1001", undefined);
 	});
 
-	test("creates report with normalized member=null from submitted schema", async () => {
-		mockPost.mockResolvedValueOnce(sampleSubmittedReport);
+	test("passes --view through", async () => {
+		mockGet.mockImplementation(() => Promise.resolve({ data: sampleV2Report }));
+		await handleReportGet("1001", { view: "summary" }, defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/reports/1001", { view: "summary" });
+	});
+});
 
-		await handleReportCreate(
-			{
-				standupId: "42",
-				answers: '{"201":"Built feature"}',
-			},
-			defaultGlobalOpts,
+describe("handleReportEdit", () => {
+	beforeEach(resetMocks);
+
+	test("PATCH /v2/reports/{id} with answers and Idempotency-Key header", async () => {
+		await handleReportEdit("1001", { answers: '{"301":"Corrected"}' }, defaultGlobalOpts);
+		const call = mockPatch.mock.calls[0] as [string, unknown, Record<string, string>];
+		expect(call[0]).toBe("/v2/reports/1001");
+		expect(call[1]).toEqual({ answers: [{ question_id: 301, text: "Corrected" }] });
+		expect(call[2]["Idempotency-Key"]).toMatch(UUID_RE);
+	});
+});
+
+describe("handleReportDelete", () => {
+	beforeEach(resetMocks);
+
+	test("DELETE /v2/reports/{id} with Idempotency-Key header when --yes given", async () => {
+		await handleReportDelete("1001", { yes: true }, defaultGlobalOpts);
+		const call = mockDelete.mock.calls[0] as [string, Record<string, string>];
+		expect(call[0]).toBe("/v2/reports/1001");
+		expect(call[1]["Idempotency-Key"]).toMatch(UUID_RE);
+	});
+
+	test("refuses to delete without --yes", async () => {
+		await expect(handleReportDelete("1001", {}, defaultGlobalOpts)).rejects.toThrow(
+			/Refusing to delete without confirmation/,
 		);
-
-		const envelope = mockWriteOutput.mock.calls[0][0];
-		expect(envelope.data.member).toBeNull();
+		expect(mockDelete).not.toHaveBeenCalled();
 	});
 });

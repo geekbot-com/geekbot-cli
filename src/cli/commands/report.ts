@@ -1,6 +1,12 @@
 import { Command } from "commander";
 import { handleError } from "../../errors/error-handler.ts";
-import { handleReportCreate, handleReportList } from "../../handlers/report-handlers.ts";
+import {
+	handleReportCreate,
+	handleReportDelete,
+	handleReportEdit,
+	handleReportGet,
+	handleReportList,
+} from "../../handlers/report-handlers.ts";
 import { getGlobalOptions } from "../globals.ts";
 
 export function createReportCommand(): Command {
@@ -8,15 +14,24 @@ export function createReportCommand(): Command {
 
 	report
 		.command("list")
-		.description("List reports with optional filters")
+		.description("List reports with optional filters (v2)")
 		.option("--standup-id <id>", "Filter by standup ID")
-		.option("--user-id <id>", "Filter by user ID")
-		.option("--before <date>", "Reports before date (YYYY-MM-DD or unix timestamp)")
-		.option("--after <date>", "Reports after date (YYYY-MM-DD or unix timestamp)")
-		.option("--limit <n>", "Max number of reports to return")
+		.option("--user-id <id>", "Filter by Slack user ID (e.g. U123)")
+		.option(
+			"--before <date>",
+			"Reports before date (maps to v2 'until' — YYYY-MM-DD or unix timestamp)",
+		)
+		.option(
+			"--after <date>",
+			"Reports after date (maps to v2 'since' — YYYY-MM-DD or unix timestamp)",
+		)
+		.option("--limit <n>", "Page size (1-100, alias for --page-size)")
+		.option("--page-size <n>", "Page size (1-100, default 25)")
+		.option("--cursor <token>", "Opaque pagination cursor from a previous response")
+		.option("--view <view>", "Response shape: summary (omits answers) or full (default)")
 		.addHelpText(
 			"after",
-			"\nExamples:\n  geekbot report list --standup-id 123\n  geekbot report list --standup-id 123 --limit 10\n  geekbot report list --after 2024-01-01",
+			"\nExamples:\n  geekbot report list --standup-id 123\n  geekbot report list --view summary --page-size 100\n  geekbot report list --after 2026-01-01 --before 2026-02-01",
 		)
 		.action(async function (this: Command) {
 			const globalOpts = getGlobalOptions(this);
@@ -29,6 +44,9 @@ export function createReportCommand(): Command {
 						before: opts.before,
 						after: opts.after,
 						limit: opts.limit,
+						pageSize: opts.pageSize,
+						cursor: opts.cursor,
+						view: opts.view,
 					},
 					globalOpts,
 				);
@@ -39,7 +57,7 @@ export function createReportCommand(): Command {
 
 	report
 		.command("create")
-		.description("Submit a report for a standup")
+		.description("Submit a report for a standup (v2)")
 		.requiredOption("--standup-id <id>", "Standup ID to report on")
 		.requiredOption("--answers <json>", 'Answers as JSON object: {"question_id": "answer", ...}')
 		.addHelpText(
@@ -57,6 +75,63 @@ export function createReportCommand(): Command {
 					},
 					globalOpts,
 				);
+			} catch (error) {
+				handleError(error, globalOpts.debug);
+			}
+		});
+
+	report
+		.command("get")
+		.description("Get a single report by ID (v2)")
+		.argument("<id>", "Report ID (numeric)")
+		.option("--view <view>", "Response shape: summary or full")
+		.addHelpText(
+			"after",
+			"\nExamples:\n  geekbot report get 456\n  geekbot report get 456 --view summary",
+		)
+		.action(async function (this: Command, id: string) {
+			const globalOpts = getGlobalOptions(this);
+			try {
+				const opts = this.opts();
+				await handleReportGet(id, { view: opts.view }, globalOpts);
+			} catch (error) {
+				handleError(error, globalOpts.debug);
+			}
+		});
+
+	report
+		.command("edit")
+		.description("Update one or more answers on a report (v2)")
+		.argument("<id>", "Report ID (numeric)")
+		.requiredOption(
+			"--answers <json>",
+			'Answers to update as JSON object: {"question_id": "new answer"}',
+		)
+		.addHelpText(
+			"after",
+			'\nExamples:\n  geekbot report edit 456 --answers \'{"101": "Corrected answer"}\'',
+		)
+		.action(async function (this: Command, id: string) {
+			const globalOpts = getGlobalOptions(this);
+			try {
+				const opts = this.opts();
+				await handleReportEdit(id, { answers: opts.answers }, globalOpts);
+			} catch (error) {
+				handleError(error, globalOpts.debug);
+			}
+		});
+
+	report
+		.command("delete")
+		.description("Delete a report (v2)")
+		.argument("<id>", "Report ID (numeric)")
+		.option("--yes", "Confirm deletion (required)")
+		.addHelpText("after", "\nExamples:\n  geekbot report delete 456 --yes")
+		.action(async function (this: Command, id: string) {
+			const globalOpts = getGlobalOptions(this);
+			try {
+				const opts = this.opts();
+				await handleReportDelete(id, { yes: opts.yes }, globalOpts);
 			} catch (error) {
 				handleError(error, globalOpts.debug);
 			}

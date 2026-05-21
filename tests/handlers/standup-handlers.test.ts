@@ -55,6 +55,24 @@ const _NORMALIZED_STANDUP: Standup = {
 	wait_time: 10, // 600s / 60 = 10min
 };
 
+/** V2 standup shape as returned by /v2/standups */
+const V2_STANDUP = {
+	id: 42,
+	name: "Daily Standup",
+	state: "active" as const,
+	time: "10:00:00",
+	wait_time: 10,
+	timezone: "America/New_York",
+	days: ["Mon", "Wed", "Fri"],
+	broadcast_channel: { id: "C123", name: "engineering" },
+	is_anonymous: false,
+	is_confidential: false,
+	owner: "U123",
+	created: "2026-01-01T00:00:00+00:00",
+	updated: "2026-01-01T00:00:00+00:00",
+	members: ["U123", "U456"],
+};
+
 // ── Mock Setup ────────────────────────────────────────────────────────
 
 const mockGet = mock(() => Promise.resolve(RAW_STANDUP));
@@ -132,297 +150,84 @@ afterAll(() => {
 	mock.restore();
 });
 
-// ── handleStandupList ────────────────────────────────────────────────
+// ── handleStandupList (v2) ───────────────────────────────────────────
 
 describe("handleStandupList", () => {
-	test("calls GET /v1/standups and writes successList envelope", async () => {
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
+	test("calls GET /v2/standups with no params by default", async () => {
+		mockGet.mockImplementation(() =>
+			Promise.resolve({ data: [V2_STANDUP], next_cursor: null, has_more: false }),
+		);
 		await handleStandupList({}, GLOBAL_OPTS);
 
-		expect(mockGet).toHaveBeenCalledWith("/v1/standups", undefined);
-		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
-
+		expect(mockGet).toHaveBeenCalledWith("/v2/standups", undefined);
 		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			ok: boolean;
-			data: unknown[];
-			metadata: { count: number };
+			data: Array<{ id: number }>;
+			metadata: Record<string, unknown>;
 		};
-		expect(envelope.ok).toBe(true);
-		expect(Array.isArray(envelope.data)).toBe(true);
-		expect(envelope.metadata.count).toBe(1);
+		expect(envelope.data[0]?.id).toBe(42);
+		expect(envelope.metadata.has_more).toBe(false);
+		expect(envelope.metadata.next_cursor).toBeNull();
 	});
 
-	test("passes admin=true query param when admin option set", async () => {
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
-		await handleStandupList({ admin: true }, GLOBAL_OPTS);
-
-		expect(mockGet).toHaveBeenCalledWith("/v1/standups", { admin: "true" });
+	test("passes v2 server-side filters as query params", async () => {
+		mockGet.mockImplementation(() =>
+			Promise.resolve({ data: [], next_cursor: null, has_more: false }),
+		);
+		await handleStandupList(
+			{
+				state: "active",
+				isAnonymous: "true",
+				broadcastChannel: "C123",
+				createdSince: "2026-01-01",
+				createdUntil: "2026-02-01",
+				cursor: "tok",
+				pageSize: "50",
+				include: "questions",
+			},
+			GLOBAL_OPTS,
+		);
+		expect(mockGet).toHaveBeenCalledWith("/v2/standups", {
+			state: "active",
+			is_anonymous: "true",
+			broadcast_channel: "C123",
+			created_since: "2026-01-01",
+			created_until: "2026-02-01",
+			cursor: "tok",
+			limit: "50",
+			include: "questions",
+		});
 	});
 
-	test("normalizes wait_time from seconds to minutes in list items", async () => {
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
-		await handleStandupList({}, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<{ wait_time: number }>;
-		};
-		expect(envelope.data[0]?.wait_time).toBe(10);
-	});
-
-	test("--brief strips to only id, name, channel, time, timezone, days", async () => {
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
-		await handleStandupList({ brief: true }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<Record<string, unknown>>;
-		};
-		expect(envelope.data).toHaveLength(1);
-		const item = envelope.data[0] as Record<string, unknown>;
-		expect(Object.keys(item).sort()).toEqual(["channel", "days", "id", "name", "time", "timezone"]);
-		expect(item.id).toBe(42);
-		expect(item.name).toBe("Daily Standup");
-		expect(item.channel).toBe("#engineering");
-		expect(item.time).toBe("10:00:00");
-		expect(item.timezone).toBe("America/New_York");
-		expect(item.days).toEqual(["Mon", "Wed", "Fri"]);
-		expect(item.questions).toBeUndefined();
-		expect(item.users).toBeUndefined();
-	});
-
-	test("--name filters by case-insensitive substring match", async () => {
-		const second = { ...RAW_STANDUP, id: 43, name: "Weekly Retro", channel: "#retro" };
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP, second]));
+	test("--name filters client-side by substring match", async () => {
+		const other = { ...V2_STANDUP, id: 99, name: "Weekly Sync" };
+		mockGet.mockImplementation(() =>
+			Promise.resolve({ data: [V2_STANDUP, other], next_cursor: null, has_more: false }),
+		);
 		await handleStandupList({ name: "daily" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<{ id: number }>;
-			metadata: { count: number };
-		};
-		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]?.id).toBe(42);
-		expect(envelope.metadata.count).toBe(1);
-	});
-
-	test("--channel filters by case-insensitive substring match", async () => {
-		const second = { ...RAW_STANDUP, id: 43, name: "Weekly Retro", channel: "#retro" };
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP, second]));
-		await handleStandupList({ channel: "retro" }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<{ id: number }>;
-		};
-		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]?.id).toBe(43);
-	});
-
-	test("--mine fetches /v1/me and filters by user membership", async () => {
-		const withUser = {
-			...RAW_STANDUP,
-			users: [
-				{
-					id: "U123",
-					role: "member",
-					email: "me@test.com",
-					username: "me",
-					realname: "Me",
-					profile_img: "https://example.com/img.png",
-				},
-			],
-		};
-		const withoutUser = { ...RAW_STANDUP, id: 43, name: "Other", users: [] };
-		mockGet.mockImplementation((path: string) => {
-			if (path === "/v1/me")
-				return Promise.resolve({
-					user: {
-						id: "U123",
-						username: "me",
-						realname: "Me",
-						firstname: "Me",
-						email: "me@test.com",
-						profile_img: "https://example.com/img.png",
-						timezone: "UTC",
-						is_admin: false,
-						is_billing_admin: false,
-						role: "member",
-					},
-					team: { id: 1, name: "Test" },
-				});
-			return Promise.resolve([withUser, withoutUser]);
-		});
-
-		await handleStandupList({ mine: true }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<{ id: number }>;
-		};
-		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]?.id).toBe(42);
-		expect(mockGet).toHaveBeenCalledWith("/v1/me");
-	});
-
-	test("--mine returns empty array when user has no matching standups", async () => {
-		const standupNoUser = { ...RAW_STANDUP, users: [] };
-		mockGet.mockImplementation((path: string) => {
-			if (path === "/v1/me")
-				return Promise.resolve({
-					user: {
-						id: "U999",
-						username: "ghost",
-						realname: "Ghost",
-						firstname: "Ghost",
-						email: "ghost@test.com",
-						profile_img: "https://example.com/img.png",
-						timezone: "UTC",
-						is_admin: false,
-						is_billing_admin: false,
-						role: "member",
-					},
-					team: { id: 1, name: "Test" },
-				});
-			return Promise.resolve([standupNoUser]);
-		});
-
-		await handleStandupList({ mine: true }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: unknown[];
-			metadata: { count: number };
-		};
-		expect(envelope.data).toHaveLength(0);
-		expect(envelope.metadata.count).toBe(0);
-	});
-
-	test("--member filters standups by user ID", async () => {
-		const withMember = {
-			...RAW_STANDUP,
-			users: [
-				{
-					id: "UHNM44125",
-					role: "member",
-					email: "jenny@geekbot.com",
-					username: "Jenny",
-					realname: "Jenny Ralli",
-					profile_img: "https://example.com/jenny.png",
-				},
-			],
-		};
-		const withoutMember = { ...RAW_STANDUP, id: 43, name: "Other", users: [] };
-		mockGet.mockImplementation(() => Promise.resolve([withMember, withoutMember]));
-
-		await handleStandupList({ member: "UHNM44125" }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<{ id: number }>;
-		};
-		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]?.id).toBe(42);
-	});
-
-	test("--member with no matches returns empty list", async () => {
-		const standupNoUser = { ...RAW_STANDUP, users: [] };
-		mockGet.mockImplementation(() => Promise.resolve([standupNoUser]));
-
-		await handleStandupList({ member: "U_NONEXISTENT" }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: unknown[];
-			metadata: { count: number };
-		};
-		expect(envelope.data).toHaveLength(0);
-		expect(envelope.metadata.count).toBe(0);
-	});
-
-	test("--brief combined with --name filters then projects", async () => {
-		const second = { ...RAW_STANDUP, id: 43, name: "Weekly Retro", channel: "#retro" };
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP, second]));
-		await handleStandupList({ brief: true, name: "daily" }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<Record<string, unknown>>;
-		};
-		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]?.id).toBe(42);
-		expect(envelope.data[0]?.questions).toBeUndefined();
-	});
-	test("--limit caps results after filters", async () => {
-		const items = [
-			{ ...RAW_STANDUP, id: 1 },
-			{ ...RAW_STANDUP, id: 2 },
-			{ ...RAW_STANDUP, id: 3 },
-		];
-		mockGet.mockImplementation(() => Promise.resolve(items));
-		await handleStandupList({ limit: "2" }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<{ id: number }>;
-			metadata: { count: number };
-		};
-		expect(envelope.data).toHaveLength(2);
-		expect(envelope.data[0]?.id).toBe(1);
-		expect(envelope.data[1]?.id).toBe(2);
-		expect(envelope.metadata.count).toBe(2);
-	});
-
-	test("--limit with invalid value throws validation error", async () => {
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
-		await expect(handleStandupList({ limit: "abc" }, GLOBAL_OPTS)).rejects.toThrow(CliError);
-	});
-
-	test("--limit with zero throws validation error", async () => {
-		mockGet.mockImplementation(() => Promise.resolve([RAW_STANDUP]));
-		await expect(handleStandupList({ limit: "0" }, GLOBAL_OPTS)).rejects.toThrow(CliError);
-	});
-
-	test("--limit combined with --brief and --name applies all three", async () => {
-		const items = [
-			{ ...RAW_STANDUP, id: 1, name: "Daily A" },
-			{ ...RAW_STANDUP, id: 2, name: "Daily B" },
-			{ ...RAW_STANDUP, id: 3, name: "Weekly Retro" },
-		];
-		mockGet.mockImplementation(() => Promise.resolve(items));
-		await handleStandupList({ name: "daily", limit: "1", brief: true }, GLOBAL_OPTS);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: Array<Record<string, unknown>>;
-			metadata: { count: number };
-		};
-		expect(envelope.data).toHaveLength(1);
-		expect(envelope.data[0]?.id).toBe(1);
-		expect(Object.keys(envelope.data[0] as Record<string, unknown>).sort()).toEqual([
-			"channel",
-			"days",
-			"id",
-			"name",
-			"time",
-			"timezone",
-		]);
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as { data: Array<{ id: number }> };
+		expect(envelope.data.map((s) => s.id)).toEqual([42]);
 	});
 });
 
-// ── handleStandupGet ─────────────────────────────────────────────────
+// ── handleStandupGet (v2) ────────────────────────────────────────────
 
 describe("handleStandupGet", () => {
-	test("calls GET /v1/standups/<id> and writes success envelope", async () => {
-		await handleStandupGet("42", GLOBAL_OPTS);
+	test("calls GET /v2/standups/<id> with no params by default", async () => {
+		mockGet.mockImplementation(() => Promise.resolve({ data: V2_STANDUP }));
+		await handleStandupGet("42", {}, GLOBAL_OPTS);
 
-		expect(mockGet).toHaveBeenCalledWith("/v1/standups/42");
-		expect(mockWriteOutput).toHaveBeenCalledTimes(1);
-
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			ok: boolean;
-			data: { id: number };
-		};
+		expect(mockGet).toHaveBeenCalledWith("/v2/standups/42", undefined);
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as { ok: boolean; data: { id: number } };
 		expect(envelope.ok).toBe(true);
 		expect(envelope.data.id).toBe(42);
 	});
 
-	test("normalizes wait_time from seconds to minutes", async () => {
-		await handleStandupGet("42", GLOBAL_OPTS);
+	test("passes --include through as query param", async () => {
+		mockGet.mockImplementation(() => Promise.resolve({ data: V2_STANDUP }));
+		await handleStandupGet("42", { include: "questions" }, GLOBAL_OPTS);
 
-		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
-			data: { wait_time: number };
-		};
-		expect(envelope.data.wait_time).toBe(10);
+		expect(mockGet).toHaveBeenCalledWith("/v2/standups/42", { include: "questions" });
 	});
 });
 
@@ -997,7 +802,7 @@ describe("handleStandupStart", () => {
 
 describe("404 suggestion enrichment", () => {
 	const notFoundError = new CliError("Not found", "not_found", 3, false, undefined, {
-		path: "/v1/standups/99999",
+		path: "/v2/standups/99999",
 		status: 404,
 	});
 
@@ -1008,7 +813,7 @@ describe("404 suggestion enrichment", () => {
 		);
 
 		try {
-			await handleStandupGet("99999", GLOBAL_OPTS);
+			await handleStandupGet("99999", {}, GLOBAL_OPTS);
 			expect.unreachable("should have thrown");
 		} catch (err) {
 			expect(err).toBeInstanceOf(CliError);
@@ -1025,7 +830,7 @@ describe("404 suggestion enrichment", () => {
 		mockBuildNotFoundSuggestion.mockImplementation(() => Promise.resolve(null));
 
 		try {
-			await handleStandupGet("99999", GLOBAL_OPTS);
+			await handleStandupGet("99999", {}, GLOBAL_OPTS);
 			expect.unreachable("should have thrown");
 		} catch (err) {
 			expect(err).toBeInstanceOf(CliError);
@@ -1057,7 +862,7 @@ describe("404 suggestion enrichment", () => {
 		mockGet.mockImplementation(() => Promise.reject(serverError));
 
 		try {
-			await handleStandupGet("42", GLOBAL_OPTS);
+			await handleStandupGet("42", {}, GLOBAL_OPTS);
 			expect.unreachable("should have thrown");
 		} catch (err) {
 			expect(err).toBeInstanceOf(CliError);

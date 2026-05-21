@@ -7,9 +7,9 @@ import type { HttpClient } from "../http/client.ts";
 import { success, successList } from "../output/envelope.ts";
 import { writeOutput } from "../output/formatter.ts";
 import type { Standup } from "../schemas/standup.ts";
-import { StandupListSchema, StandupSchema } from "../schemas/standup.ts";
-import { MeResponseSchema } from "../schemas/user.ts";
-import { parseQuestionsInput } from "../utils/input-parsers.ts";
+import { StandupSchema } from "../schemas/standup.ts";
+import { V2StandupItemResponseSchema, V2StandupListResponseSchema } from "../schemas/v2-standup.ts";
+import { parseQuestionsInput, parseV2DateFilter } from "../utils/input-parsers.ts";
 import {
 	buildDeleteUndoCommand,
 	buildReceipt,
@@ -28,13 +28,15 @@ import {
 // ── Option Interfaces ─────────────────────────────────────────────────
 
 export interface StandupListOptions {
-	admin?: boolean;
-	brief?: boolean;
+	state?: string;
+	isAnonymous?: string;
+	broadcastChannel?: string;
+	createdSince?: string;
+	createdUntil?: string;
+	cursor?: string;
+	pageSize?: string;
+	include?: string;
 	name?: string;
-	channel?: string;
-	mine?: boolean;
-	member?: string;
-	limit?: string;
 }
 
 export interface StandupCreateOptions {
@@ -129,19 +131,9 @@ async function enrichNotFound(
 
 // ── Handlers ──────────────────────────────────────────────────────────
 
-/** Brief standup projection — essential fields for discovery */
-export interface StandupBrief {
-	id: number;
-	name: string;
-	channel: string | null;
-	time: string;
-	timezone: string;
-	days: string[];
-}
-
 /**
  * Handle `geekbot standup list` command.
- * Fetches standups from GET /v1/standups with optional filters and projection.
+ * Fetches standups from GET /v2/standups (cursor-paginated, single page per call).
  */
 export async function handleStandupList(
 	options: StandupListOptions,
@@ -149,71 +141,70 @@ export async function handleStandupList(
 ): Promise<void> {
 	const client = await createAuthenticatedClient(globalOpts);
 
-	const params: Record<string, string> | undefined = options.admin ? { admin: "true" } : undefined;
+	const params = buildV2ListParams({
+		state: options.state,
+		is_anonymous: options.isAnonymous,
+		broadcast_channel: options.broadcastChannel,
+		created_since: options.createdSince
+			? parseV2DateFilter(options.createdSince, "--created-since")
+			: undefined,
+		created_until: options.createdUntil
+			? parseV2DateFilter(options.createdUntil, "--created-until")
+			: undefined,
+		cursor: options.cursor,
+		limit: options.pageSize ? String(validateLimit(options.pageSize)) : undefined,
+		include: options.include,
+	});
 
-	const raw = await client.get<unknown>("/v1/standups", params);
-	let standups = StandupListSchema.parse(raw);
+	const raw = await client.get<unknown>("/v2/standups", params);
+	const parsed = V2StandupListResponseSchema.parse(raw);
+	let data = parsed.data;
 
-	// Client-side filters
 	if (options.name) {
 		const needle = options.name.toLowerCase();
-		standups = standups.filter((s) => s.name.toLowerCase().includes(needle));
+		data = data.filter((s) => s.name.toLowerCase().includes(needle));
 	}
 
-	if (options.channel) {
-		const needle = options.channel.toLowerCase();
-		standups = standups.filter((s) => s.channel?.toLowerCase().includes(needle) ?? false);
-	}
-
-	if (options.mine) {
-		const meRaw = await client.get<unknown>("/v1/me");
-		const me = MeResponseSchema.parse(meRaw);
-		const myId = me.user.id;
-		standups = standups.filter((s) => s.users.some((u) => u.id === myId));
-	}
-
-	if (options.member) {
-		standups = standups.filter((s) => s.users.some((u) => u.id === options.member));
-	}
-
-	// Limit — cap results after all filters
-	if (options.limit) {
-		const limitNum = validateLimit(options.limit);
-		standups = standups.slice(0, limitNum);
-	}
-
-	// Brief projection — only id, name, channel for fast discovery
-	if (options.brief) {
-		const brief: StandupBrief[] = standups.map((s) => ({
-			id: s.id,
-			name: s.name,
-			channel: s.channel,
-			time: s.time,
-			timezone: s.timezone,
-			days: s.days,
-		}));
-		writeOutput(successList(brief));
-		return;
-	}
-
-	writeOutput(successList(standups));
+	writeOutput(
+		successList(data, {
+			next_cursor: parsed.next_cursor,
+			has_more: parsed.has_more,
+		}),
+	);
 }
 
 /**
  * Handle `geekbot standup get` command.
- * Fetches a single standup by ID from GET /v1/standups/<id>.
+ * Fetches a single standup by ID from GET /v2/standups/<id>.
  */
-export async function handleStandupGet(id: string, globalOpts: GlobalOptions): Promise<void> {
+export async function handleStandupGet(
+	id: string,
+	options: { include?: string },
+	globalOpts: GlobalOptions,
+): Promise<void> {
 	const numericId = validateNumericId(id, "standup ID");
 	await enrichNotFound(
 		async (client) => {
-			const raw = await client.get<unknown>(`/v1/standups/${numericId}`);
-			const standup = StandupSchema.parse(raw);
-			writeOutput(success(standup));
+			const params = buildV2ListParams({ include: options.include });
+			const raw = await client.get<unknown>(`/v2/standups/${numericId}`, params);
+			const parsed = V2StandupItemResponseSchema.parse(raw);
+			writeOutput(success(parsed.data));
 		},
 		globalOpts,
 		"standup",
 	);
+}
+
+function buildV2ListParams(
+	input: Record<string, string | undefined>,
+): Record<string, string> | undefined {
+	const out: Record<string, string> = {};
+	for (const [k, v] of Object.entries(input)) {
+		if (v !== undefined && v !== "") {
+			out[k] = v;
+		}
+	}
+	return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**
