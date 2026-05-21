@@ -66,13 +66,13 @@ Most common operations at a glance:
 |------|---------|
 | List my standups | `geekbot standup list` (add `--brief` for compact output, `--name`/`--channel` to filter, `--mine` for member-only, `--member <id>` for a specific user, `--limit <n>` to cap results) |
 | Get standup details + question IDs | `geekbot standup get <id>` |
-| Create a standup | `geekbot standup create --name "..." --channel "..." --questions '[...]'` |
+| Create a standup | `geekbot standup create --channel "..." --questions '[...]' --users "U1,U2"` (or `--sync-channel "#ch"`; `--is-anonymous` optional) |
 | Update a standup (PATCH) | `geekbot standup update <id> --time "09:30"` |
 | Delete a standup | `geekbot standup delete <id> --yes` |
 | List reports | `geekbot report list --standup-id <id> --limit 10` |
 | Submit a report | `geekbot report create --standup-id <id> --answers '{"<qid>":"..."}'` |
 | My profile + user ID | `geekbot me show` |
-| Create a poll (Slack only) | `geekbot poll create --name "..." --channel "..." --question "..." --choices '[...]'` |
+| Create a poll (Slack only) | `geekbot poll create --name "..." --channel "..." --question "..." --choices '[...]' [--duration 120]` |
 | Search team members | `geekbot team search <query>` (matches username, realname, email) |
 | Check auth | `geekbot auth status` |
 
@@ -138,23 +138,43 @@ This is the most common and most complex manager operation.
 **If the request is vague** ("set up a standup for my team"), offer templates.
 Load `standup-templates.json` and present the 3–4 most relevant options
 based on context. Templates provide pre-built questions and sensible schedule
-defaults — the user just needs to supply a name and Slack/Teams channel.
+defaults — the user just needs to confirm name, channel, and members.
 
-**Gathering required fields:**
-- `--name` — the standup name (required)
-- `--channel` — Slack/Teams channel to post in (required)
-- `--questions` — JSON array of question objects (required; from template or custom)
-- `--time` — defaults to 10:00 if not specified
+**Gathering required fields (v2):**
+- `--channel` — broadcast channel id or name (required)
+- `--questions` — JSON array (required). Strings `["q1","q2"]` for free-text
+  or `[{"text":"q1","choices":["A","B"]}]` for multiple-choice
+- `--name` — optional. If the user gave a name, use it verbatim. Otherwise
+  infer a meaningful name from the configured questions (use the template
+  name when a template is in play). **Don't** rely on the API default
+  `"Standup #<broadcast channel>"`.
+- `--time` — defaults to `10:00`
 - `--timezone` — infer from `geekbot me show` → `data.timezone` if not given
 - `--days` — defaults to Mon–Fri
-- `--users` — comma-separated user IDs (can add later via `update`)
+- **Members — always ask.** Pass `--users "U1,U2"` for an explicit list or
+  `--sync-channel "#name"` to sync members from a channel. The two flags
+  are mutually exclusive. The API does not auto-populate members when both
+  are omitted — never call without member resolution.
+- `--is-anonymous` — surface proactively for sensitive content (well-being,
+  feedback, retro psychological safety) or templates with
+  `is_anonymous_recommended: true`.
 
 **Always confirm the full configuration with the user before executing.**
-Show: name, channel, questions, schedule, timezone.
+Show: name, channel, members (count + list or sync source), schedule,
+timezone, anonymous flag, questions.
+
+**Idempotency:** the CLI auto-generates a UUID `Idempotency-Key` per call
+(24h API window). Re-running the command creates a new standup. On
+ambiguous outcomes (timeout, partial response), list with
+`geekbot standup list` before retrying.
 
 **Note:** The CLI sets which days of the week to run but cannot set frequency
 (bi-weekly, monthly). For non-weekly schedules, create the standup via CLI
 and tell the user to adjust the frequency in the Geekbot web dashboard.
+
+For the full step-by-step wizard (naming, channel resolution, member
+resolution, anonymous-flag policy, edge cases), read `manager-workflows.md`
+§ Standup Creation Wizard.
 
 ### Editing / Deleting / Other Operations
 

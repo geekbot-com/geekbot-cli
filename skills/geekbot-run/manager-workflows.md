@@ -59,21 +59,84 @@ Which one works, or would you prefer something custom?
 
 ### Step 3: Gather required fields
 
-For template-based creation, many fields have defaults. Only ask about
-what's missing:
+The v2 API only requires `--channel` and `--questions`. Everything else
+either has a sensible default or should be inferred. **Do not skip member
+resolution** — see the dedicated subsection below.
 
 | Field | Template provides? | Action if missing |
 |-------|-------------------|-------------------|
-| Name | Yes (suggestive) | Let user customise or accept |
-| Channel | No | Must ask — "Which Slack/Teams channel?" |
-| Questions | Yes | Show them, let user add/remove/edit |
+| Name | Yes (suggestive) | See **Naming** below |
+| Channel | No | See **Channel resolution** below |
+| Questions | Yes | Show them, let user add / remove / edit |
 | Time | Yes (default) | Offer to change: "The default is 10:00 — does that work?" |
 | Timezone | No | Infer from `geekbot me show` → `data.timezone`. Confirm. |
 | Days | Yes (default) | Show the default, let user adjust |
-| Users | No | Ask if they want to add members now or later |
+| Members | No | **Always ask** — see **Member resolution** below |
+| Anonymous | No | See **Anonymous responses** below |
 
 For custom standups, gather all fields conversationally. Don't ask all
-at once — lead with name + channel, then questions, then schedule.
+at once — lead with channel + questions, then members, then schedule.
+
+#### Naming
+
+- **User gave a name** → use it verbatim.
+- **User did not give a name** → infer a meaningful name from the configured
+  questions (e.g. retro-style questions → `"Retrospective"`, sales pipeline
+  questions → `"Sales Report"`, well-being questions → `"Well-being Check-in"`).
+  When a template is in play, use the template's name.
+- **Do not** fall back to the API default `"Standup #<broadcast channel>"`
+  by omitting `--name` — pass an inferred name explicitly.
+- **No collision pre-check.** Don't run `standup list --channel <x>` before
+  creating just to detect duplicates; the user has been clear about intent.
+
+#### Channel resolution
+
+The CLI has no `channel list` or `channel search` command — we cannot
+validate before posting. Strategy:
+
+- If the user pastes `#name` or a channel ID → pass through as-is (the API
+  accepts both).
+- If the user is vague ("my engineering channel", "the team room") → **ask**.
+  No silent guesses.
+- On `validation_error` from the API after submit, surface `error.message`
+  cleanly. The CLI cannot auto-suggest alternatives.
+
+#### Member resolution
+
+If the user has not already specified members, **always ask before creating**.
+The v2 API does not auto-populate members when both flags are omitted.
+
+Ask verbosely so the choice is clear:
+
+> Who should be in this standup? You have two options:
+> 1. **Sync from a channel** — include everyone in a channel automatically
+>    (good for "everyone in #engineering"). New members joining the channel
+>    are added over time.
+> 2. **Explicit list** — give me names or user IDs and I'll resolve them
+>    (good for cross-channel teams or partial groups).
+
+Then map the answer to a flag:
+
+- "Everyone in #channel" → `--sync-channel "#channel"` (channel id or name)
+- "Alice, Bob, Carol" → `geekbot team search <name>` for each →
+  collect IDs → `--users "U1,U2,U3"`
+- Names that return multiple matches from `team search` → show them and
+  ask which one
+- User IDs given directly → pass through to `--users`
+
+`--users` and `--sync-channel` are **mutually exclusive**. Never both.
+
+#### Anonymous responses
+
+Surface `--is-anonymous` proactively when:
+
+- The user mentions sensitive content: well-being, feedback, performance,
+  retro psychological safety
+- A template recommends it (e.g. `well-being-check-in` has
+  `is_anonymous_recommended: true`)
+
+Don't volunteer it for daily standups — accountability is the point of those.
+Pass through if the user explicitly asks for anonymous regardless of template.
 
 ### Step 4: Confirm and execute
 
@@ -83,6 +146,8 @@ Present the full configuration in a clear summary:
 Standup: Sprint Retro
 Channel: #engineering
 Schedule: Fridays at 15:00 (Europe/Athens)
+Members: 4 (Alice, Bob, Carol, David)
+Anonymous: No
 Questions:
   1. What went well?
   2. What could improve?
@@ -91,7 +156,8 @@ Questions:
 Ready to create?
 ```
 
-On confirmation, build and execute the CLI command:
+On confirmation, build and execute the CLI command. **Pass member resolution
+explicitly** (`--users` or `--sync-channel`) — never omit both:
 
 ```bash
 geekbot standup create \
@@ -100,28 +166,41 @@ geekbot standup create \
   --time "15:00" \
   --timezone "Europe/Athens" \
   --days "Fri" \
-  --questions '[{"text":"What went well?"},{"text":"What could improve?"},{"text":"What should we try next?"}]'
+  --questions '[{"text":"What went well?"},{"text":"What could improve?"},{"text":"What should we try next?"}]' \
+  --users "U123,U456,U789,U012"
 ```
 
 ### Step 5: Post-creation
 
 After success:
-1. Confirm with the created standup's ID and details
-2. If users weren't specified: "Want to add members now?"
-   - If yes: run `geekbot team list` to show teams with members and their IDs.
-     Let the user pick who to include, then:
-     `geekbot standup update <id> --users "U123,U456"`
-   - To find a specific person's ID: names appear alongside IDs in team list output
-3. Mention: "You can trigger it immediately with `geekbot standup start <id>`"
+1. Confirm the created standup's ID and details.
+2. Mention: "You can trigger it immediately with `geekbot standup start <id>`."
+3. Mention `--is-anonymous` was set (if applicable), since it is not
+   reversible after creation in obvious ways.
+
+### Idempotency awareness
+
+The CLI auto-generates an `Idempotency-Key` (UUID v4) per invocation. The
+API stores the request under that key for **24h** (scoped to team + user +
+key, with a body hash).
+
+- HTTP-level retries inside the same CLI call reuse the key and are safe.
+- Re-running the command from the skill creates a **new** key and therefore
+  a **new** standup. Don't blindly re-run on ambiguous outcomes (timeout,
+  partial response) — check first with `geekbot standup list`.
 
 ### Edge cases
 
-- **User doesn't know channel name**: Suggest they check Slack/Teams, or
-  just type the channel name without # (the CLI handles both)
+- **User doesn't know channel name**: Ask them to check Slack/Teams. The
+  CLI accepts channel name (with or without `#`) or the channel ID.
 - **User wants to edit questions after creation**: Use `standup update`
-  or `standup replace` depending on scope of changes
+  or `standup replace` depending on scope of changes. Note that
+  `--questions` in `standup update` replaces the full list.
 - **Questions with special characters**: Ensure JSON is properly escaped.
   Single quotes inside questions need escaping in the shell command.
+- **Switching member modes after creation**: `standup update --users "..."`
+  replaces the explicit member list. The `--sync-channel` setting cannot be
+  toggled via the CLI today; direct the user to the web dashboard.
 
 ---
 
@@ -138,12 +217,24 @@ alternative for Teams users.
 
 ### Gather fields
 
-All four fields are required:
+Four required fields plus one optional that's often worth surfacing:
 
-1. **Name** — what to call the poll
-2. **Channel** — where to post it
-3. **Question** — the poll question (single string)
-4. **Choices** — JSON array of answer options
+1. **Name** — what to call the poll. If the user is vague, infer from the
+   question (e.g. "Where should we eat?" → `"Team Lunch"`).
+2. **Channel** — id or name of the broadcast channel. Same resolution
+   rules as standup creation: pass through user-provided values; ask if
+   vague; no silent guesses.
+3. **Question** — single question string.
+4. **Choices** — JSON array of strings, **at least 2 entries**.
+5. **Duration** *(optional, default 120 minutes)* — how long the poll stays
+   open. Default is appropriate for quick same-day decisions. Surface to
+   the user when:
+   - The poll has a multi-day decision feel ("team lunch next week",
+     "Q3 OKRs") → suggest a longer duration in minutes.
+   - The poll is genuinely time-critical → suggest a shorter window
+     (`--duration 30`).
+   Pass through whatever the user requests; convert "1 hour" → `60`,
+   "1 day" → `1440`, etc.
 
 ### Confirm and execute
 
@@ -152,8 +243,22 @@ geekbot poll create \
   --name "Team Lunch" \
   --channel "#general" \
   --question "Where should we eat?" \
-  --choices '["Pizza", "Sushi", "Tacos"]'
+  --choices '["Pizza","Sushi","Tacos"]'
+
+# With explicit duration
+geekbot poll create \
+  --name "Q3 OKRs sign-off" \
+  --channel "#leadership" \
+  --question "Approve the draft?" \
+  --choices '["Approve","Approve with changes","Reject"]' \
+  --duration 2880
 ```
+
+### Idempotency awareness
+
+Same as `standup create`: the CLI auto-generates a `Idempotency-Key` per
+call (24h API window). Re-running the command creates a new poll. Don't
+re-run on ambiguous outcomes; check with `geekbot poll list` first.
 
 ### Viewing results
 

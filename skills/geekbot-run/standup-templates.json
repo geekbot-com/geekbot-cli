@@ -75,14 +75,36 @@
 			"description": "Check in on how your team is really doing. Covers productivity, stress, and satisfaction. Best run anonymously.",
 			"categories": ["team-well-being", "remote-collaboration"],
 			"roles": ["people-managers"],
+			"is_anonymous_recommended": true,
 			"questions": [
-				{ "text": "Thinking about this past week: how productive do you feel you were?" },
-				{ "text": "Do you feel you've had more wins or roadblocks this past week?" },
-				{ "text": "How stressful did you find work in general this week?" },
-				{ "text": "How satisfied do you feel about the work you've completed this week?" },
-				{ "text": "Do you feel satisfied with your work-life balance?" },
-				{ "text": "Overall, how do you feel about your level of work-related stress?" },
-				{ "text": "Do you feel you can discuss concerns with your manager as often as needed?" }
+				{
+					"text": "Thinking about this past week: how productive do you feel you were?",
+					"choices": ["Very productive", "Productive", "Neutral", "Unproductive", "Very unproductive"]
+				},
+				{
+					"text": "Do you feel you've had more wins or roadblocks this past week?",
+					"choices": ["Mostly wins", "More wins than roadblocks", "Balanced", "More roadblocks than wins", "Mostly roadblocks"]
+				},
+				{
+					"text": "How stressful did you find work in general this week?",
+					"choices": ["Not at all stressful", "Slightly stressful", "Moderately stressful", "Very stressful", "Extremely stressful"]
+				},
+				{
+					"text": "How satisfied do you feel about the work you've completed this week?",
+					"choices": ["Very satisfied", "Satisfied", "Neutral", "Dissatisfied", "Very dissatisfied"]
+				},
+				{
+					"text": "Do you feel satisfied with your work-life balance?",
+					"choices": ["Very satisfied", "Satisfied", "Neutral", "Dissatisfied", "Very dissatisfied"]
+				},
+				{
+					"text": "Overall, how do you feel about your level of work-related stress?",
+					"choices": ["Manageable", "Sometimes too much", "Often too much", "Constantly overwhelming"]
+				},
+				{
+					"text": "Do you feel you can discuss concerns with your manager as often as needed?",
+					"choices": ["Always", "Often", "Sometimes", "Rarely", "Never"]
+				}
 			],
 			"defaults": {
 				"days": "Fri",
@@ -99,7 +121,10 @@
 			"questions": [
 				{ "text": "Was anything a particular struggle?" },
 				{ "text": "If there was one thing I could do to help you, what would it be?" },
-				{ "text": "On a scale of 1-10, how happy are you with your work-life balance?" },
+				{
+					"text": "On a scale of 1-10, how happy are you with your work-life balance?",
+					"choices": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+				},
 				{ "text": "Growth-wise, where do you want to focus next month?" },
 				{ "text": "Anything you'd like to add?" }
 			],

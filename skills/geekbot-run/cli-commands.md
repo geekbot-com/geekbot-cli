@@ -59,48 +59,91 @@ Get full details of a standup including questions with their IDs.
 geekbot standup get 123
 ```
 
-Returns: `data` includes `id`, `name`, `channel`, `time`, `timezone`, `days`,
-`questions` (array of `{ id, text }`), member info.
+Returns (v2): `data` includes `id`, `name`, `channel`, `time`, `timezone`,
+`days`, `questions` (array of `{ id, text, position, answer_type, choices }`),
+member info.
+
+Notes:
+- The `text` field replaces v1's `question` field.
+- `choices` is always present (empty array for free-text questions, populated
+  for multiple-choice questions).
+- `answer_type` indicates the response shape (e.g. free-text vs choice).
 
 This is the primary way to discover question IDs for report submission.
 
-### standup create
+### standup create (v2)
 
-Create a new standup. Name and channel are required.
+Create a new standup via `POST /v2/standups`. Only `--channel` and `--questions`
+are required.
 
 ```bash
+# Minimum: channel + questions (free-text)
+geekbot standup create \
+  --channel "#engineering" \
+  --questions '["What did you do?","Any blockers?"]'
+
+# Full example with explicit member list and schedule
 geekbot standup create \
   --name "Sprint Retro" \
   --channel "#engineering" \
   --time "15:00" \
   --timezone "America/Chicago" \
   --days "Fri" \
-  --questions '[{"text": "What went well?"}, {"text": "What could improve?"}]' \
-  --users "U123,U456" \
-  --wait-time 0
+  --questions '[{"text":"What went well?"},{"text":"What could improve?"}]' \
+  --users "U123,U456"
+
+# Multiple-choice question
+geekbot standup create \
+  --channel C0123456789 \
+  --questions '[{"text":"How are you?","choices":["Great","OK","Struggling"]}]'
+
+# Sync members from a different channel + anonymous responses
+geekbot standup create \
+  --channel "#well-being" \
+  --sync-channel "#everyone" \
+  --is-anonymous \
+  --questions '["How are you feeling this week?"]'
 ```
 
 | Flag | Required | Default | Notes |
 |------|----------|---------|-------|
-| `--name <name>` | Yes | — | Standup name |
-| `--channel <channel>` | Yes | — | Slack/Teams channel name |
+| `--channel <channel>` | Yes | — | Broadcast channel **id or name** where reports are posted |
+| `--questions <json>` | Yes | — | JSON. Strings `["q1","q2"]` or objects `[{"text":"q1","choices":["A","B"]}]` |
+| `--name <name>` | No | API picks `"Standup #<broadcast channel>"` | Skill should infer a meaningful name from the questions when the user is vague rather than relying on the API default |
 | `--time <HH:MM>` | No | `10:00` | 24-hour format |
-| `--timezone <tz>` | No | `UTC` | IANA timezone (e.g. `Europe/Athens`) |
-| `--days <days>` | No | `Mon,Tue,Wed,Thu,Fri` | Comma-separated |
-| `--questions <json>` | Yes | — | JSON array: `[{"text": "..."},...]` |
-| `--users <ids>` | No | — | Comma-separated user IDs |
-| `--wait-time <min>` | No | `0` | Minutes between users |
+| `--timezone <tz>` | No | `user_local` (API resolves) | IANA timezone (e.g. `Europe/Athens`) |
+| `--days <days>` | No | `Mon,Tue,Wed,Thu,Fri` | Comma-separated abbreviations |
+| `--users <ids>` | No¹ | — | Comma-separated user IDs (Slack-style, e.g. `U123,U456`) |
+| `--sync-channel <channel>` | No¹ | — | Sync members from this channel (id or name). **Mutually exclusive with `--users`** |
+| `--is-anonymous` | No | `false` | Make all responses anonymous |
 
-Returns: `data` is the created standup object. `metadata` includes an
-`undo` field with the delete command.
+¹ Member resolution is non-default: if neither `--users` nor `--sync-channel`
+is passed, the API does not auto-populate members. The skill must ask the user
+which approach to take rather than calling with neither flag.
 
-**Tip**: If you know the user's timezone from `geekbot me show`, use it
-as the default instead of UTC.
+**Questions schema:**
+- Plain strings → free-text answer
+- `{"text": "..."}` → free-text answer (object form)
+- `{"text": "...", "choices": ["A","B","C"]}` → multiple-choice answer
 
-**Limitation**: The `--days` flag controls which days of the week the standup
+**Idempotency:** the CLI auto-generates an `Idempotency-Key` (UUID v4) per
+invocation. The API stores the request for **24h** scoped to `{teamId, userId, key}`
+with a body hash. HTTP-level retries within the same CLI call reuse the key
+and are safe. **Re-running the command produces a new key → a new standup.**
+Don't re-run on ambiguous outcomes; list first with `geekbot standup list`.
+
+Returns: `data` is the created standup object. `metadata.undo` contains the
+delete command.
+
+**Tip:** If you know the user's timezone from `geekbot me show`, pass it
+explicitly instead of relying on `user_local`.
+
+**Limitation:** The `--days` flag controls which days of the week the standup
 runs, but there is no flag for frequency (bi-weekly, monthly, etc.). For
-non-weekly schedules, create the standup via CLI and direct the user to
-adjust the frequency in the Geekbot web dashboard.
+non-weekly schedules, create via CLI and direct the user to adjust the
+frequency in the Geekbot web dashboard.
+
+**Removed in v2:** `--wait-time` is no longer supported.
 
 ### standup update (PATCH)
 
@@ -242,22 +285,37 @@ geekbot poll get 456
 
 Returns: poll details including question and choices.
 
-### poll create
+### poll create (v2)
+
+Creates a poll via `POST /v2/polls`.
 
 ```bash
 geekbot poll create \
   --name "Team Lunch" \
   --channel "#general" \
   --question "Where should we eat?" \
-  --choices '["Pizza", "Sushi", "Tacos"]'
+  --choices '["Pizza","Sushi","Tacos"]'
+
+# With a 60-minute window
+geekbot poll create \
+  --name "Quick decision" \
+  --channel C0123456789 \
+  --question "Ship today?" \
+  --choices '["Yes","No"]' \
+  --duration 60
 ```
 
-| Flag | Required |
-|------|----------|
-| `--name <name>` | Yes |
-| `--channel <channel>` | Yes |
-| `--question <text>` | Yes |
-| `--choices <json>` | Yes — JSON array of strings |
+| Flag | Required | Default | Notes |
+|------|----------|---------|-------|
+| `--name <name>` | Yes | — | Poll name |
+| `--channel <channel>` | Yes | — | Broadcast channel **id or name** |
+| `--question <text>` | Yes | — | Single question string |
+| `--choices <json>` | Yes | — | JSON array of strings, **at least 2 entries** |
+| `--duration <minutes>` | No | `120` | Positive integer; how long the poll stays open |
+
+**Idempotency:** same behavior as `standup create` — UUID auto-generated per
+call, 24h API window. Don't re-run on ambiguous outcomes; list first with
+`geekbot poll list`.
 
 ### poll votes
 
