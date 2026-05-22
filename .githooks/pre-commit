@@ -18,3 +18,6 @@ bun run lint
 
 echo "pre-commit: bunx tsc --noEmit"
 bunx tsc --noEmit
+
+echo "biome check --staged --no-errors-on-unmatched"
+bunx biome check --staged --no-errors-on-unmatched
