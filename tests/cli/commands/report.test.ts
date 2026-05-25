@@ -85,17 +85,16 @@ describe("createReportCommand", () => {
 		expect(mockHandlers.handleReportCreate).toHaveBeenCalled();
 	});
 
-	test("get subcommand calls handleReportGet with id and view", async () => {
+	test("get subcommand calls handleReportGet with id", async () => {
 		const program = new Command();
 		addGlobalOptions(program);
 		program.addCommand(createReportCommand());
-		await program.parseAsync(["report", "get", "456", "--view", "full", "--api-key", "test"], {
+		await program.parseAsync(["report", "get", "456", "--api-key", "test"], {
 			from: "user",
 		});
 		expect(mockHandlers.handleReportGet).toHaveBeenCalled();
-		const [id, opts] = mockHandlers.handleReportGet.mock.calls[0] as [string, { view?: string }];
+		const [id] = mockHandlers.handleReportGet.mock.calls[0] as [string];
 		expect(id).toBe("456");
-		expect(opts.view).toBe("full");
 	});
 
 	test("edit subcommand calls handleReportEdit", async () => {

@@ -129,7 +129,7 @@ const { handlePollList, handlePollGet, handlePollCreate, handlePollVotes } = awa
 
 const { CliError } = await import("../../src/errors/cli-error.ts");
 
-const GLOBAL_OPTS = { apiKey: undefined, output: "json" as const, debug: false };
+const GLOBAL_OPTS = { apiKey: undefined };
 
 beforeEach(() => {
 	mockGet.mockReset();

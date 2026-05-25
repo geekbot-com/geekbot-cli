@@ -10,8 +10,6 @@ const mockResolveCredential = mock(() =>
 
 const defaultGlobalOpts: GlobalOptions = {
 	apiKey: undefined,
-	output: "json",
-	debug: false,
 };
 
 const deps = { resolveCredential: mockResolveCredential };
@@ -37,7 +35,7 @@ describe("createAuthenticatedClient", () => {
 	});
 
 	test("passes apiKey flag through to resolveCredential", async () => {
-		const opts: GlobalOptions = { apiKey: "flag-key", output: "json", debug: false };
+		const opts: GlobalOptions = { apiKey: "flag-key" };
 
 		await createAuthenticatedClient(opts, deps);
 

@@ -12,10 +12,12 @@ interface ResourceListItem {
 }
 
 /**
- * Extract items with id+name from an unknown API response array.
+ * Extract items with id+name from a v2 list envelope `{ data: [...] }`.
  * Shared across all resource types since the shape is identical.
  */
-function extractItems(data: unknown): ResourceListItem[] {
+function extractItems(raw: unknown): ResourceListItem[] {
+	if (typeof raw !== "object" || raw === null) return [];
+	const data = (raw as { data?: unknown }).data;
 	if (!Array.isArray(data)) return [];
 	return data
 		.filter(
@@ -39,8 +41,8 @@ const RESOURCE_CONFIG: Record<
 		extractItems: (data: unknown) => ResourceListItem[];
 	}
 > = {
-	standup: { listPath: "/v1/standups", extractItems },
-	poll: { listPath: "/v1/polls", extractItems },
+	standup: { listPath: "/v2/standups", extractItems },
+	poll: { listPath: "/v2/polls", extractItems },
 };
 
 /**

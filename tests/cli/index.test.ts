@@ -58,11 +58,9 @@ describe("CLI program registration", () => {
 		}).toThrow(CommanderError);
 	});
 
-	test("registers global options (--api-key, --output, --debug)", () => {
+	test("registers --api-key global option", () => {
 		const program = createProgram();
 		const optionNames = program.options.map((o) => o.long);
 		expect(optionNames).toContain("--api-key");
-		expect(optionNames).toContain("--output");
-		expect(optionNames).toContain("--debug");
 	});
 });

@@ -47,7 +47,7 @@ export function createPollCommand(): Command {
 					globalOpts,
 				);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -69,7 +69,7 @@ export function createPollCommand(): Command {
 				const opts = this.opts();
 				await handlePollGet(id, { include: opts.include }, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -100,7 +100,7 @@ export function createPollCommand(): Command {
 					globalOpts,
 				);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -120,7 +120,7 @@ export function createPollCommand(): Command {
 				const opts = this.opts();
 				await handlePollVotes(id, { after: opts.after, before: opts.before }, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 

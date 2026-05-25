@@ -13,7 +13,7 @@ function formatZodMessage(error: ZodError): string {
 		.join("; ");
 }
 
-export function handleError(error: unknown, debug: boolean = false): never {
+export function handleError(error: unknown): never {
 	if (error instanceof ZodError) {
 		writeOutput(
 			failure({
@@ -24,10 +24,6 @@ export function handleError(error: unknown, debug: boolean = false): never {
 					"The API returned data in an unexpected format. The API may have changed or there may be a version mismatch.",
 			}),
 		);
-
-		if (debug) {
-			process.stderr.write(`[debug] ZodError issues: ${JSON.stringify(error.issues)}\n`);
-		}
 
 		process.exit(ExitCode.API_ERROR);
 	}
@@ -41,10 +37,6 @@ export function handleError(error: unknown, debug: boolean = false): never {
 				suggestion: error.suggestion ?? null,
 			}),
 		);
-
-		if (debug && error.context) {
-			process.stderr.write(`[debug] Error context: ${JSON.stringify(error.context)}\n`);
-		}
 
 		process.exit(error.exitCode);
 	}

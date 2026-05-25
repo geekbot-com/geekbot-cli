@@ -49,8 +49,8 @@ afterAll(() => {
 	(Bun as { sleep: typeof Bun.sleep }).sleep = originalSleep;
 });
 
-function client(apiKey = "test-key", debug = false) {
-	return createHttpClient(apiKey, { debug }, spy.fn);
+function client(apiKey = "test-key") {
+	return createHttpClient(apiKey, spy.fn);
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -79,16 +79,6 @@ describe("createHttpClient", () => {
 		expect(typeof c.patch).toBe("function");
 		expect(typeof c.put).toBe("function");
 		expect(typeof c.delete).toBe("function");
-	});
-
-	test("accepts debug option", () => {
-		const c = createHttpClient("test-key", { debug: true });
-		expect(typeof c.get).toBe("function");
-	});
-
-	test("accepts debug: false option", () => {
-		const c = createHttpClient("test-key", { debug: false });
-		expect(typeof c.get).toBe("function");
 	});
 });
 
@@ -413,105 +403,7 @@ describe("path normalization", () => {
 	});
 });
 
-describe("debug mode", () => {
-	test("writes retry debug message to stderr", async () => {
-		const stderrMessages: string[] = [];
-		const origWrite = process.stderr.write;
-		process.stderr.write = ((chunk: string) => {
-			stderrMessages.push(chunk);
-			return true;
-		}) as typeof process.stderr.write;
-
-		spy
-			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
-			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
-
-		const c = client("test-key", true);
-
-		try {
-			await c.get("/v1/standups");
-		} finally {
-			process.stderr.write = origWrite;
-		}
-
-		const allOutput = stderrMessages.join("");
-		expect(allOutput).toContain("[debug]");
-		expect(allOutput).toContain("Retry attempt 1");
-	});
-
-	test("writes debug network error message to stderr on retry", async () => {
-		const stderrMessages: string[] = [];
-		const origWrite = process.stderr.write;
-		process.stderr.write = ((chunk: string) => {
-			stderrMessages.push(chunk);
-			return true;
-		}) as typeof process.stderr.write;
-
-		spy
-			.mockRejectedValueOnce(new Error("Connection refused"))
-			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
-
-		const c = client("test-key", true);
-		try {
-			await c.get("/v1/standups");
-		} finally {
-			process.stderr.write = origWrite;
-		}
-
-		const allOutput = stderrMessages.join("");
-		expect(allOutput).toContain("[debug] Network error (attempt 1/4)");
-		expect(allOutput).toContain("Connection refused");
-	});
-
-	test("writes debug HTTP error message to stderr", async () => {
-		const stderrMessages: string[] = [];
-		const origWrite = process.stderr.write;
-		process.stderr.write = ((chunk: string) => {
-			stderrMessages.push(chunk);
-			return true;
-		}) as typeof process.stderr.write;
-
-		spy.mockResolvedValueOnce(errorResponse("Bad request", 400));
-
-		const c = client("test-key", true);
-		try {
-			await c.get("/v1/standups");
-		} catch {
-			/* expected */
-		} finally {
-			process.stderr.write = origWrite;
-		}
-
-		const allOutput = stderrMessages.join("");
-		expect(allOutput).toContain("[debug] HTTP 400");
-	});
-
-	test("debug output never contains the API key", async () => {
-		const stderrMessages: string[] = [];
-		const origWrite = process.stderr.write;
-		process.stderr.write = ((chunk: string) => {
-			stderrMessages.push(chunk);
-			return true;
-		}) as typeof process.stderr.write;
-
-		spy
-			.mockResolvedValueOnce(errorResponse("Rate limited", 429))
-			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
-
-		const secretKey = "super-secret-api-key-12345";
-		const c = client(secretKey, true);
-
-		try {
-			await c.get("/v1/standups");
-		} finally {
-			process.stderr.write = origWrite;
-		}
-
-		const allOutput = stderrMessages.join("");
-		expect(allOutput).not.toContain(secretKey);
-		expect(allOutput).toContain("[debug]");
-	});
-
+describe("network failure modes", () => {
 	test("handles non-Error network failures", async () => {
 		spy
 			.mockRejectedValueOnce("string error")

@@ -1,9 +1,7 @@
-import { type Command, Option } from "commander";
+import type { Command } from "commander";
 
 export interface GlobalOptions {
 	apiKey?: string;
-	output: "json";
-	debug: boolean;
 }
 
 /**
@@ -11,10 +9,7 @@ export interface GlobalOptions {
  * These are inherited by all subcommands via optsWithGlobals().
  */
 export function addGlobalOptions(program: Command): void {
-	program
-		.option("--api-key <key>", "Geekbot API key (overrides GEEKBOT_API_KEY env var)")
-		.addOption(new Option("--output <format>", "Output format").choices(["json"]).default("json"))
-		.option("--debug", "Show debug output on stderr", false);
+	program.option("--api-key <key>", "Geekbot API key (overrides GEEKBOT_API_KEY env var)");
 }
 
 /**
@@ -25,7 +20,5 @@ export function getGlobalOptions(cmd: Command): GlobalOptions {
 	const opts = cmd.optsWithGlobals();
 	return {
 		apiKey: opts.apiKey,
-		output: "json",
-		debug: opts.debug === true,
 	};
 }

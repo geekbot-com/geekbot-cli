@@ -2,13 +2,9 @@ import { Command } from "commander";
 import { handleError } from "../../errors/error-handler.ts";
 import {
 	handleStandupCreate,
-	handleStandupDelete,
-	handleStandupDuplicate,
 	handleStandupGet,
 	handleStandupList,
-	handleStandupReplace,
 	handleStandupStart,
-	handleStandupUpdate,
 } from "../../handlers/standup-handlers.ts";
 import { getGlobalOptions } from "../globals.ts";
 
@@ -29,7 +25,6 @@ export function createStandupCommand(): Command {
 			"--include <fields>",
 			"Comma-separated extras: questions, member_email, member_username, member_realname",
 		)
-		.option("--name <name>", "Client-side substring filter on name (applied after fetch)")
 		.addHelpText(
 			"after",
 			"\nExamples:\n  geekbot standup list\n  geekbot standup list --state active --page-size 50\n  geekbot standup list --include questions\n  geekbot standup list --include member_email,member_username,member_realname\n  geekbot standup list --broadcast-channel C0123ABCD",
@@ -48,12 +43,11 @@ export function createStandupCommand(): Command {
 						cursor: opts.cursor,
 						pageSize: opts.pageSize,
 						include: opts.include,
-						name: opts.name,
 					},
 					globalOpts,
 				);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -75,7 +69,7 @@ export function createStandupCommand(): Command {
 				const opts = this.opts();
 				await handleStandupGet(id, { include: opts.include }, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -117,117 +111,7 @@ export function createStandupCommand(): Command {
 					globalOpts,
 				);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
-			}
-		});
-
-	standup
-		.command("update")
-		.description("Partially update a standup (PATCH)")
-		.argument("<id>", "Standup ID (numeric)")
-		.option("--name <name>", "New standup name")
-		.option("--channel <channel>", "New channel")
-		.option("--time <time>", "New time (HH:MM)")
-		.option("--timezone <tz>", "New timezone")
-		.option("--days <days>", "New days (comma-separated)")
-		.option("--questions <json>", "Questions as JSON array")
-		.option("--users <ids>", "Comma-separated user IDs")
-		.option("--wait-time <minutes>", "New wait time in minutes")
-		.addHelpText(
-			"after",
-			'\nExamples:\n  geekbot standup update 123 --name "Updated Daily"\n  geekbot standup update 123 --time "14:00" --days "Mon,Wed,Fri"\n  geekbot standup update 123 --questions \'["What did you do?","Any blockers?"]\'',
-		)
-		.action(async function (this: Command, id: string) {
-			const globalOpts = getGlobalOptions(this);
-			try {
-				const opts = this.opts();
-				await handleStandupUpdate(
-					id,
-					{
-						name: opts.name,
-						channel: opts.channel,
-						time: opts.time,
-						timezone: opts.timezone,
-						days: opts.days,
-						questions: opts.questions,
-						users: opts.users,
-						waitTime: opts.waitTime,
-					},
-					globalOpts,
-				);
-			} catch (error) {
-				handleError(error, globalOpts.debug);
-			}
-		});
-
-	standup
-		.command("replace")
-		.description("Fully replace a standup (PUT)")
-		.argument("<id>", "Standup ID (numeric)")
-		.requiredOption("--name <name>", "Standup name")
-		.requiredOption("--channel <channel>", "Slack channel")
-		.option("--time <time>", "Time (HH:MM)", "10:00")
-		.option("--timezone <tz>", "Timezone", "UTC")
-		.option("--days <days>", "Days (comma-separated)", "Mon,Tue,Wed,Thu,Fri")
-		.option("--questions <json>", "Questions as JSON array")
-		.option("--users <ids>", "User IDs (comma-separated)")
-		.option("--wait-time <minutes>", "Wait time in minutes")
-		.addHelpText(
-			"after",
-			'\nExamples:\n  geekbot standup replace 123 --name "New Daily" --channel "#general"',
-		)
-		.action(async function (this: Command, id: string) {
-			const globalOpts = getGlobalOptions(this);
-			try {
-				const opts = this.opts();
-				await handleStandupReplace(
-					id,
-					{
-						name: opts.name,
-						channel: opts.channel,
-						time: opts.time,
-						timezone: opts.timezone,
-						days: opts.days,
-						questions: opts.questions,
-						users: opts.users,
-						waitTime: opts.waitTime,
-					},
-					globalOpts,
-				);
-			} catch (error) {
-				handleError(error, globalOpts.debug);
-			}
-		});
-
-	standup
-		.command("delete")
-		.description("Delete a standup")
-		.argument("<id>", "Standup ID (numeric)")
-		.option("--yes", "Confirm deletion (required)")
-		.addHelpText("after", "\nExamples:\n  geekbot standup delete 123 --yes")
-		.action(async function (this: Command, id: string) {
-			const globalOpts = getGlobalOptions(this);
-			try {
-				const opts = this.opts();
-				await handleStandupDelete(id, { yes: opts.yes }, globalOpts);
-			} catch (error) {
-				handleError(error, globalOpts.debug);
-			}
-		});
-
-	standup
-		.command("duplicate")
-		.description("Duplicate an existing standup")
-		.argument("<id>", "Standup ID to duplicate (numeric)")
-		.requiredOption("--name <name>", "Name for the new standup")
-		.addHelpText("after", '\nExamples:\n  geekbot standup duplicate 123 --name "Copy of Daily"')
-		.action(async function (this: Command, id: string) {
-			const globalOpts = getGlobalOptions(this);
-			try {
-				const opts = this.opts();
-				await handleStandupDuplicate(id, { name: opts.name }, globalOpts);
-			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -246,7 +130,7 @@ export function createStandupCommand(): Command {
 				const opts = this.opts();
 				await handleStandupStart(id, { users: opts.users }, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 

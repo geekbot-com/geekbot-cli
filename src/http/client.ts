@@ -14,12 +14,7 @@ export interface HttpClient {
 	delete(path: string, headers?: Record<string, string>): Promise<null>;
 }
 
-export function createHttpClient(
-	apiKey: string,
-	options?: { debug?: boolean },
-	fetchImpl?: typeof globalThis.fetch,
-): HttpClient {
-	const debug = options?.debug ?? false;
+export function createHttpClient(apiKey: string, fetchImpl?: typeof globalThis.fetch): HttpClient {
 	const _fetch = fetchImpl ?? globalThis.fetch;
 
 	async function request<T>(
@@ -48,16 +43,10 @@ export function createHttpClient(
 
 		for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 			try {
-				if (debug && attempt > 0) {
-					process.stderr.write(`[debug] Retry attempt ${attempt} for ${method} ${cleanPath}\n`);
-				}
-
 				const response = await _fetch(url, {
 					method,
 					headers: {
 						// Geekbot API expects raw token, NOT "Bearer <token>"
-						// WARNING: Authorization contains the raw API key.
-						// Never log request/response headers in debug mode.
 						Authorization: apiKey,
 						"Content-Type": "application/json",
 						"User-Agent": `geekbot-skill-cli/${APP_VERSION}`,
@@ -78,17 +67,8 @@ export function createHttpClient(
 				// Non-OK response -- parse error and decide retry vs throw
 				const errorMessage = await parseErrorBody(response);
 
-				if (debug) {
-					process.stderr.write(
-						`[debug] HTTP ${response.status} from ${method} ${cleanPath}: ${errorMessage}\n`,
-					);
-				}
-
 				if (isRetryable(response.status) && attempt < MAX_RETRIES) {
 					const backoff = getBackoffMs(response, attempt, INITIAL_BACKOFF_MS);
-					if (debug) {
-						process.stderr.write(`[debug] Retrying in ${backoff}ms\n`);
-					}
 					await Bun.sleep(backoff);
 					continue;
 				}
@@ -101,11 +81,6 @@ export function createHttpClient(
 				// Network-level errors (DNS failure, connection refused, timeout)
 				if (attempt < MAX_RETRIES) {
 					const backoff = INITIAL_BACKOFF_MS * 2 ** attempt;
-					if (debug) {
-						process.stderr.write(
-							`[debug] Network error (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error instanceof Error ? error.message : String(error)}\n`,
-						);
-					}
 					await Bun.sleep(backoff);
 					continue;
 				}

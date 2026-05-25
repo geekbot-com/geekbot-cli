@@ -38,8 +38,6 @@ import {
 
 const defaultGlobalOpts: GlobalOptions = {
 	apiKey: undefined,
-	output: "json",
-	debug: false,
 };
 
 const sampleV2Report = {
@@ -155,16 +153,10 @@ describe("handleReportCreate", () => {
 describe("handleReportGet", () => {
 	beforeEach(resetMocks);
 
-	test("GET /v2/reports/{id} with no params by default", async () => {
+	test("GET /v2/reports/{id} with no params", async () => {
 		mockGet.mockImplementation(() => Promise.resolve({ data: sampleV2Report }));
-		await handleReportGet("1001", {}, defaultGlobalOpts);
-		expect(mockGet).toHaveBeenCalledWith("/v2/reports/1001", undefined);
-	});
-
-	test("passes --view through", async () => {
-		mockGet.mockImplementation(() => Promise.resolve({ data: sampleV2Report }));
-		await handleReportGet("1001", { view: "summary" }, defaultGlobalOpts);
-		expect(mockGet).toHaveBeenCalledWith("/v2/reports/1001", { view: "summary" });
+		await handleReportGet("1001", defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/reports/1001");
 	});
 });
 

@@ -51,7 +51,7 @@ export function createReportCommand(): Command {
 					globalOpts,
 				);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -76,7 +76,7 @@ export function createReportCommand(): Command {
 					globalOpts,
 				);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -84,18 +84,13 @@ export function createReportCommand(): Command {
 		.command("get")
 		.description("Get a single report by ID (v2)")
 		.argument("<id>", "Report ID (numeric)")
-		.option("--view <view>", "Response shape: summary or full")
-		.addHelpText(
-			"after",
-			"\nExamples:\n  geekbot report get 456\n  geekbot report get 456 --view summary",
-		)
+		.addHelpText("after", "\nExamples:\n  geekbot report get 456")
 		.action(async function (this: Command, id: string) {
 			const globalOpts = getGlobalOptions(this);
 			try {
-				const opts = this.opts();
-				await handleReportGet(id, { view: opts.view }, globalOpts);
+				await handleReportGet(id, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -117,7 +112,7 @@ export function createReportCommand(): Command {
 				const opts = this.opts();
 				await handleReportEdit(id, { answers: opts.answers }, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -133,7 +128,7 @@ export function createReportCommand(): Command {
 				const opts = this.opts();
 				await handleReportDelete(id, { yes: opts.yes }, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 

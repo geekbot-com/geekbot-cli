@@ -29,10 +29,6 @@ export interface ReportCreateOptions {
 	answers: string;
 }
 
-export interface ReportGetOptions {
-	view?: string;
-}
-
 export interface ReportEditOptions {
 	answers: string;
 }
@@ -160,23 +156,13 @@ export async function handleReportCreate(
 
 /**
  * Handle `geekbot report get` command.
- * Fetches a single report via GET /v2/reports/{id}. Always returns the `full`
- * shape; `--view summary` is accepted for symmetry with `report list`.
+ * Fetches a single report via GET /v2/reports/{id}. Always returns the `full` shape.
  */
-export async function handleReportGet(
-	id: string,
-	options: ReportGetOptions,
-	globalOpts: GlobalOptions,
-): Promise<void> {
+export async function handleReportGet(id: string, globalOpts: GlobalOptions): Promise<void> {
 	const client = await createAuthenticatedClient(globalOpts);
 	const numericId = validateNumericId(id, "report ID");
 
-	// `view` is documented as list-only on the api side, but accept the flag
-	// here so the CLI surface is uniform — pass it through; the api ignores
-	// unknown query params on GET item.
-	const params = buildParams({ view: validateView(options.view, "--view") });
-
-	const raw = await client.get<unknown>(`/v2/reports/${numericId}`, params);
+	const raw = await client.get<unknown>(`/v2/reports/${numericId}`);
 	const parsed = V2ReportItemResponseSchema.parse(raw);
 	writeOutput(success(parsed.data));
 }

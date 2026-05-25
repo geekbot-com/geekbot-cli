@@ -15,7 +15,7 @@ export function createTeamCommand(): Command {
 			try {
 				await handleTeamList(globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -32,7 +32,7 @@ export function createTeamCommand(): Command {
 			try {
 				await handleTeamSearch(query, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
