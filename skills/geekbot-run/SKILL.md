@@ -64,11 +64,9 @@ Most common operations at a glance:
 
 | Task | Command |
 |------|---------|
-| List my standups | `geekbot standup list` (add `--brief` for compact output, `--name`/`--channel` to filter, `--mine` for member-only, `--member <id>` for a specific user, `--limit <n>` to cap results) |
+| List my standups | `geekbot standup list` (add `--state active`, `--is-anonymous true`, `--broadcast-channel <id>`, or `--page-size <n>` to narrow results) |
 | Get standup details + question IDs | `geekbot standup get <id>` |
 | Create a standup | `geekbot standup create --channel "..." --questions '[...]' --users "U1,U2"` (or `--sync-channel "#ch"`; `--is-anonymous` optional) |
-| Update a standup (PATCH) | `geekbot standup update <id> --time "09:30"` |
-| Delete a standup | `geekbot standup delete <id> --yes` |
 | List reports | `geekbot report list --standup-id <id> --limit 10` |
 | Submit a report | `geekbot report create --standup-id <id> --answers '{"<qid>":"..."}'` |
 | My profile + user ID | `geekbot me show` |
@@ -108,8 +106,7 @@ Pattern-match on the user's request to pick the right workflow. Don't ask
 The same person can manage standups and submit reports in one conversation.
 
 **Route to Manager Workflows (§ below) when you see:**
-- Creation/config language: "create", "set up", "configure", "schedule",
-  "add members", "change the questions", "duplicate", "delete"
+- Creation/config language: "create", "set up", "configure", "schedule"
 - Analytics language: "how is my team doing", "engagement", "response rate",
   "who hasn't posted", "participation", "trends"
 - Member summary language: "what has X been up to", "X's reports",
@@ -176,14 +173,10 @@ For the full step-by-step wizard (naming, channel resolution, member
 resolution, anonymous-flag policy, edge cases), read `manager-workflows.md`
 § Standup Creation Wizard.
 
-### Editing / Deleting / Other Operations
+### Other Operations
 
-- **Edit**: Fetch current state with `standup get`, show the user, confirm
-  changes, use `standup update` (PATCH). Use `standup replace` only for
-  full config replacement.
-- **Delete**: Always fetch and show what will be deleted first. Get explicit
-  confirmation. Execute with `--yes`.
-- **Duplicate**: `geekbot standup duplicate <id> --name "New Name"`
+- **Edit / Delete / Duplicate**: Not available in the CLI. Direct the user
+  to the Geekbot web dashboard for these operations.
 - **Trigger now**: `geekbot standup start <id>` — confirm before executing.
 - **Polls** (Slack only): See `cli-commands.md` for poll commands.
 
@@ -206,8 +199,8 @@ For the full step-by-step workflow, read `manager-workflows.md` §Team Member
 Summary.
 
 **Quick start:** `geekbot team search <name>` → get user ID →
-`geekbot standup list --member <id> --brief` to find their standups →
-`geekbot report list --standup-id <sid> --user-id <id> --after <3 weeks ago> --limit 20` →
+`geekbot standup list` to enumerate standups → for each, fetch reports with
+`geekbot report list --standup-id <sid> --user-id <id> --after <3 weeks ago> --page-size 20` →
 synthesize by work stream, not chronologically.
 
 ## Reporter Workflows
@@ -243,8 +236,6 @@ One-shot commands that don't need the full pipeline:
 | Operation | Confirmation required? | What to show |
 |-----------|----------------------|--------------|
 | CREATE standup/poll | Yes | Full config: name, channel, questions, schedule |
-| UPDATE standup | Yes | Current vs proposed (diff) |
-| DELETE standup | Yes, always | What will be deleted (name, channel, members) |
 | POST report | Yes, always | Complete draft with all answers |
 | TRIGGER standup | Yes | Which standup, who it targets |
 | List / Get / Analytics | No | Just execute and present results |
@@ -278,8 +269,6 @@ exit code.
 - **Retrying auth errors** — exit code 4 is never transient. Guide the user
   to `geekbot auth login` (or `geekbot auth setup --api-key` as fallback)
   instead.
-- **Skipping confirmation for deletes** — always show what will be deleted
-  and get explicit approval, even if it feels obvious.
 - **Dumping raw JSON** — format output as tables, summaries, or narratives.
   The user should never see a raw JSON envelope.
 - **Ignoring `error.suggestion`** — when a resource isn't found (exit 3),

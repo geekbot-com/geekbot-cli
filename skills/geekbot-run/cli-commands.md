@@ -18,42 +18,35 @@ JSON envelope: `{ ok, data, error, metadata }`. Always check `ok` first.
 
 ### standup list
 
-List standups the authenticated user participates in, with optional
-client-side filtering and a brief output mode.
+List standups visible to the authenticated user via `GET /v2/standups`.
+Cursor-paginated; each invocation returns one page.
 
 ```bash
-geekbot standup list                            # all your standups
-geekbot standup list --admin                    # all team standups (admin only)
-geekbot standup list --brief                    # compact: id, name, channel only
-geekbot standup list --brief --limit 10         # first 10, compact
-geekbot standup list --name "daily"             # filter by name (case-insensitive substring)
-geekbot standup list --channel "#status"        # filter by channel (case-insensitive substring)
-geekbot standup list --mine                     # only standups you are a member of
-geekbot standup list --member "UHNM44125"       # only standups a specific user is in
-geekbot standup list --mine --brief             # combine filters
-geekbot standup list --include member_realname  # enrich members with names
+geekbot standup list                                 # first page (default 25)
+geekbot standup list --state active --page-size 50   # only active standups, 50 per page
+geekbot standup list --broadcast-channel C0123ABCD   # restrict to a channel id
+geekbot standup list --is-anonymous true             # only anonymous standups
+geekbot standup list --include questions             # expand questions
+geekbot standup list --cursor "<token>"              # next page
 ```
 
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--admin` | `false` | Include all team standups (admin only) |
-| `--brief` | `false` | Return only `id`, `name`, `channel` |
-| `--limit <n>` | — | Cap results to first N standups (applied after filters) |
-| `--name <name>` | — | Case-insensitive substring filter on standup name |
-| `--channel <channel>` | — | Case-insensitive substring filter on channel name |
-| `--mine` | `false` | Filter to standups where you appear in the members list |
-| `--member <id>` | — | Filter to standups where the given user ID is a member |
+| `--state <states>` | — | Comma-separated subset of `active`, `paused` |
+| `--is-anonymous <bool>` | — | `true` or `false` |
+| `--broadcast-channel <id>` | — | Specific channel id (e.g. `C12345`) |
+| `--created-since <date>` | — | ISO 8601 or `YYYY-MM-DD` (inclusive) |
+| `--created-until <date>` | — | ISO 8601 or `YYYY-MM-DD` (exclusive) |
+| `--cursor <token>` | — | Opaque pagination cursor from a previous response |
+| `--page-size <n>` | `25` | Page size (1-100) |
 | `--include <fields>` | — | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
 
-**Note:** `--name`, `--channel`, `--mine`, `--member`, and `--limit` are
-client-side filters applied after fetching. `--mine` makes one extra API call
-(`GET /v1/me`) to resolve your user ID.
-
-Returns: `data` is an array of standup objects. With `--brief`, each object
-contains only `id`, `name`, `channel`. Without `--brief`, full standup
-objects with `questions`, `members`, and all fields. `members` is an array
-of `{ id, email?, username?, realname? }` — the optional fields are populated
-when requested via `--include member_email|member_username|member_realname`.
+Returns: `data` is an array of standup objects, `metadata.next_cursor`
+and `metadata.has_more` drive pagination. Each standup includes `id`,
+`name`, `state`, `time`, `timezone`, `days`, `broadcast_channel`,
+`is_anonymous`, `members`, and (when requested) `questions`. `members`
+is an array of `{ id, email?, username?, realname? }` — optional fields
+populated via `--include member_email|member_username|member_realname`.
 
 ### standup get
 
@@ -142,8 +135,8 @@ with a body hash. HTTP-level retries within the same CLI call reuse the key
 and are safe. **Re-running the command produces a new key → a new standup.**
 Don't re-run on ambiguous outcomes; list first with `geekbot standup list`.
 
-Returns: `data` is the created standup object. `metadata.undo` contains the
-delete command.
+Returns: `data` is the created standup object. `metadata.undo` is `null`
+(the CLI cannot delete standups; use the Geekbot web dashboard).
 
 **Tip:** If you know the user's timezone from `geekbot me show`, pass it
 explicitly instead of relying on `user_local`.
@@ -155,65 +148,9 @@ frequency in the Geekbot web dashboard.
 
 **Removed in v2:** `--wait-time` is no longer supported.
 
-### standup update (PATCH)
-
-Partially update a standup. Only pass the flags you want to change.
-
-```bash
-geekbot standup update 123 --time "09:30" --days "Mon,Wed,Fri"
-geekbot standup update 123 --users "U123,U456,U789"
-geekbot standup update 123 --questions '["What did you do?","Any blockers?"]'
-```
-
-| Flag | Notes |
-|------|-------|
-| `--name <name>` | New standup name |
-| `--channel <channel>` | New channel |
-| `--time <HH:MM>` | New time |
-| `--timezone <tz>` | New timezone |
-| `--days <days>` | New days (replaces all) |
-| `--questions <json>` | New questions (replaces all) |
-| `--wait-time <min>` | New wait time |
-| `--users <ids>` | New member list (replaces all) |
-
-**Important**: `--users` replaces the entire member list. To add a member,
-fetch the current list first, append the new ID, and send the full list.
-
-### standup replace (PUT)
-
-Full replacement of a standup. Name and channel are required; everything
-else uses create defaults if omitted.
-
-```bash
-geekbot standup replace 123 \
-  --name "New Name" \
-  --channel "#new-channel" \
-  --time "11:00" \
-  --timezone "UTC"
-```
-
-Use `replace` only when you want to reset the entire config. Prefer
-`update` for partial changes.
-
-### standup delete
-
-Delete a standup permanently. Always pass `--yes` in agent context.
-
-```bash
-geekbot standup delete 123 --yes
-```
-
-The skill should confirm with the user conversationally before executing.
-
-### standup duplicate
-
-Clone an existing standup with a new name.
-
-```bash
-geekbot standup duplicate 123 --name "Backend Daily v2"
-```
-
-Returns: the new standup object with a new ID.
+**Not in the CLI:** updating, replacing, deleting, and duplicating standups
+are not exposed by the v2 CLI. Direct the user to the Geekbot web dashboard
+for those operations.
 
 ### standup start
 
@@ -453,8 +390,6 @@ Apply to all commands:
 | Flag | Default | Notes |
 |------|---------|-------|
 | `--api-key <key>` | — | Override env var and keychain |
-| `--output <format>` | `json` | Only `json` currently supported |
-| `--debug` | `false` | Debug output on stderr |
 | `-v, --version` | — | Print version |
 | `--help` | — | Show help text |
 

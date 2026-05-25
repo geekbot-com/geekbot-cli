@@ -44,8 +44,7 @@ flag as alternatives.
 ### Exit 5: FORBIDDEN — Check role, explain permissions
 
 Check the user's role via `geekbot me show` → `data.role`. If non-admin,
-suggest contacting their team admin. For `standup list --admin`, suggest
-trying without `--admin`.
+suggest contacting their team admin.
 
 ### Exit 6: VALIDATION — Fix input and retry
 

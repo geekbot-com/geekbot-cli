@@ -86,8 +86,8 @@ at once — lead with channel + questions, then members, then schedule.
   When a template is in play, use the template's name.
 - **Do not** fall back to the API default `"Standup #<broadcast channel>"`
   by omitting `--name` — pass an inferred name explicitly.
-- **No collision pre-check.** Don't run `standup list --channel <x>` before
-  creating just to detect duplicates; the user has been clear about intent.
+- **No collision pre-check.** Don't list standups before creating just to
+  detect duplicates; the user has been clear about intent.
 
 #### Channel resolution
 
@@ -193,14 +193,11 @@ key, with a body hash).
 
 - **User doesn't know channel name**: Ask them to check Slack/Teams. The
   CLI accepts channel name (with or without `#`) or the channel ID.
-- **User wants to edit questions after creation**: Use `standup update`
-  or `standup replace` depending on scope of changes. Note that
-  `--questions` in `standup update` replaces the full list.
+- **User wants to edit questions, members, or delete after creation**: The
+  v2 CLI does not expose update/replace/delete/duplicate. Direct the user
+  to the Geekbot web dashboard.
 - **Questions with special characters**: Ensure JSON is properly escaped.
   Single quotes inside questions need escaping in the shell command.
-- **Switching member modes after creation**: `standup update --users "..."`
-  replaces the explicit member list. The `--sync-channel` setting cannot be
-  toggled via the CLI today; direct the user to the web dashboard.
 
 ---
 
@@ -457,13 +454,13 @@ Map the user's language to a concrete date range:
 ### Step 2.5: Find their standups (optional but recommended)
 
 ```bash
-geekbot standup list --member <id> --brief
+geekbot standup list --include member_username
 ```
 
-This shows which standups the person participates in. Use this to pick
-the right standup for report fetching (typically the "Daily" or "status"
-standup). This avoids fetching reports across all standups which can
-fail on certain API response shapes.
+The v2 list response includes the members array; scan it for the target
+user's id to pick the right standup for report fetching (typically the
+"Daily" or "status" standup). This avoids fetching reports across all
+standups which can fail on certain API response shapes.
 
 ### Step 3: Fetch reports
 

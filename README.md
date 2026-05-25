@@ -349,7 +349,7 @@ geekbot auth remove
 ## Security
 
 - **API keys are never written to disk in plaintext.** The CLI stores credentials in your OS keychain (macOS Keychain, Windows Credential Vault, or Linux Secret Service). No config files, no dotfiles.
-- **Keys passed via `--api-key` or `GEEKBOT_API_KEY` are not logged.** Debug output (`--debug`) redacts credential values.
+- **Keys passed via `--api-key` or `GEEKBOT_API_KEY` are not logged.**
 - **Validate before storing.** `geekbot auth setup` checks that the key is valid against the Geekbot API before persisting it, preventing silent failures from typos or revoked keys.
 - **Prefer the keychain over environment variables** for workstations. Environment variables are visible to other processes and may leak into shell history. Use `GEEKBOT_API_KEY` for CI/CD and ephemeral environments where a keychain is unavailable.
 
@@ -360,8 +360,6 @@ These options apply to all commands:
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--api-key <key>` | Geekbot API key (overrides `GEEKBOT_API_KEY` env var) | -- |
-| `--output <format>` | Output format (currently `json` only; reserved for future formats) | `json` |
-| `--debug` | Show debug output on stderr | `false` |
 | `-v, --version` | Print version number | -- |
 | `--help` | Show help text | -- |
 
@@ -376,63 +374,34 @@ The CLI follows a noun-verb pattern: `geekbot <resource> <action> [options]`.
 | `list` | `geekbot standup list [options]` | List standups you participate in |
 | `get` | `geekbot standup get <id>` | Get a standup by ID |
 | `create` | `geekbot standup create --name <name> --channel <channel> [options]` | Create a new standup |
-| `update` | `geekbot standup update <id> [options]` | Partially update a standup (PATCH) |
-| `replace` | `geekbot standup replace <id> --name <name> --channel <channel> [options]` | Fully replace a standup (PUT) |
-| `delete` | `geekbot standup delete <id> --yes` | Delete a standup |
-| `duplicate` | `geekbot standup duplicate <id> --name <name>` | Duplicate an existing standup |
 | `start` | `geekbot standup start <id> [--users <ids>]` | Trigger a standup immediately |
 
 #### `standup list` options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--admin` | `false` | Include all team standups (admin only) |
-| `--brief` | `false` | Return only id, name, channel, time, timezone, days |
-| `--name <name>` | -- | Filter by name (case-insensitive substring match) |
-| `--channel <channel>` | -- | Filter by channel (case-insensitive substring match) |
-| `--mine` | `false` | Show only standups you are a member of |
+| `--state <states>` | -- | Comma-separated subset of `active`, `paused` |
+| `--is-anonymous <bool>` | -- | Filter by anonymity (`true`/`false`) |
+| `--broadcast-channel <id>` | -- | Restrict to a specific channel id (e.g. `C12345`) |
+| `--created-since <date>` | -- | ISO 8601 or `YYYY-MM-DD` (inclusive) |
+| `--created-until <date>` | -- | ISO 8601 or `YYYY-MM-DD` (exclusive) |
+| `--cursor <token>` | -- | Opaque pagination cursor from a previous response |
+| `--page-size <n>` | `25` | Page size (1-100) |
+| `--include <fields>` | -- | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
 
 #### `standup create` options
 
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `--name <name>` | Yes | -- | Standup name |
-| `--channel <channel>` | Yes | -- | Slack channel name |
+| `--name <name>` | No | `Standup #<broadcast channel>` | Standup name |
+| `--channel <channel>` | Yes | -- | Broadcast channel id or name where reports are posted |
+| `--sync-channel <channel>` | No | -- | Channel id or name to sync members from (mutually exclusive with `--users`) |
 | `--time <time>` | No | `10:00` | Time in HH:MM 24-hour format |
-| `--timezone <tz>` | No | `UTC` | IANA timezone |
+| `--timezone <tz>` | No | `user_local` | IANA timezone |
 | `--days <days>` | No | `Mon,Tue,Wed,Thu,Fri` | Comma-separated days |
-| `--questions <json>` | Yes | -- | Questions as JSON array |
-| `--users <ids>` | No | -- | Comma-separated user IDs |
-| `--wait-time <minutes>` | No | `0` | Minutes between users |
-
-#### `standup update` options
-
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--name <name>` | No | New standup name |
-| `--channel <channel>` | No | New channel |
-| `--time <time>` | No | New time (HH:MM) |
-| `--timezone <tz>` | No | New timezone |
-| `--days <days>` | No | New days (comma-separated) |
-| `--wait-time <minutes>` | No | New wait time in minutes |
-
-#### `standup replace` options
-
-Same options as `create`. `--name` and `--channel` are required; all other options have the same defaults as `create`.
-
-#### `standup delete` options
-
-| Option | Description |
-|--------|-------------|
-| `--yes` | Confirm deletion (required; deletion fails with an error if omitted) |
-
-#### `standup duplicate` options
-
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--name <name>` | Yes | Name for the new standup |
-
-The `<id>` argument is the ID of the standup to duplicate.
+| `--questions <json>` | Yes | -- | Questions as JSON. `["q1","q2"]` or `[{"text":"q1","choices":["A","B"]}]` |
+| `--users <ids>` | No | -- | Comma-separated user IDs (mutually exclusive with `--sync-channel`) |
+| `--is-anonymous` | No | `false` | Make responses anonymous |
 
 #### `standup start` options
 
@@ -447,17 +416,23 @@ The `<id>` argument is the ID of the standup to trigger immediately.
 | Subcommand | Syntax | Description |
 |------------|--------|-------------|
 | `list` | `geekbot report list [options]` | List reports with optional filters |
+| `get` | `geekbot report get <id>` | Get a single report by ID |
 | `create` | `geekbot report create --standup-id <id> --answers <json>` | Submit a report for a standup |
+| `edit` | `geekbot report edit <id> --answers <json>` | Update one or more answers on an existing report |
+| `delete` | `geekbot report delete <id> --yes` | Delete a report |
 
 #### `report list` options
 
-| Option | Description |
-|--------|-------------|
-| `--standup-id <id>` | Filter by standup ID |
-| `--user-id <id>` | Filter by user ID |
-| `--before <date>` | Reports before date (ISO 8601 or unix timestamp) |
-| `--after <date>` | Reports after date (ISO 8601 or unix timestamp) |
-| `--limit <n>` | Max number of reports to return |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--standup-id <id>` | -- | Filter by standup ID |
+| `--user-id <id>` | -- | Filter by Slack user ID (e.g. `U123`) |
+| `--before <date>` | -- | Reports before date (maps to v2 `until` — ISO 8601 or unix timestamp) |
+| `--after <date>` | -- | Reports after date (maps to v2 `since` — ISO 8601 or unix timestamp) |
+| `--page-size <n>` | `25` | Page size (1-100) |
+| `--limit <n>` | -- | Page size (1-100, alias for `--page-size`) |
+| `--cursor <token>` | -- | Opaque pagination cursor from a previous response |
+| `--view <view>` | `full` | Response shape: `summary` (omits answers) or `full` |
 
 #### `report create` options
 
@@ -465,6 +440,22 @@ The `<id>` argument is the ID of the standup to trigger immediately.
 |--------|----------|-------------|
 | `--standup-id <id>` | Yes | Standup ID to report on |
 | `--answers <json>` | Yes | Answers as JSON object: `{"question_id": "answer", ...}` |
+
+#### `report edit` options
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--answers <json>` | Yes | Answers to update as JSON object: `{"question_id": "new answer"}` |
+
+The `<id>` argument is the ID of the report to edit.
+
+#### `report delete` options
+
+| Option | Description |
+|--------|-------------|
+| `--yes` | Confirm deletion (required; deletion fails with an error if omitted) |
+
+The `<id>` argument is the ID of the report to delete.
 
 ### `poll` -- Manage polls (Slack teams only)
 
@@ -477,14 +468,34 @@ Polls are only available for Slack-connected teams. Non-Slack teams will receive
 | `create` | `geekbot poll create --name <name> --channel <channel> --question <text> --choices <json>` | Create a new poll |
 | `votes` | `geekbot poll votes <id> [--after <date>] [--before <date>]` | Get voting results for a poll |
 
+#### `poll list` options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--state <states>` | -- | Comma-separated subset of `active`, `paused` |
+| `--is-anonymous <bool>` | -- | Filter by anonymity (`true`/`false`) |
+| `--broadcast-channel <id>` | -- | Restrict to a specific channel id (e.g. `C12345`) |
+| `--created-since <date>` | -- | ISO 8601 or `YYYY-MM-DD` (inclusive) |
+| `--created-until <date>` | -- | ISO 8601 or `YYYY-MM-DD` (exclusive) |
+| `--cursor <token>` | -- | Opaque pagination cursor from a previous response |
+| `--page-size <n>` | `25` | Page size (1-100) |
+| `--include <fields>` | -- | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
+
+#### `poll get` options
+
+| Option | Description |
+|--------|-------------|
+| `--include <fields>` | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
+
 #### `poll create` options
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--name <name>` | Yes | Poll name |
-| `--channel <channel>` | Yes | Slack channel |
-| `--question <text>` | Yes | Poll question text |
-| `--choices <json>` | Yes | Choices as JSON array of strings |
+| Option | Required | Default | Description |
+|--------|----------|---------|-------------|
+| `--name <name>` | Yes | -- | Poll name |
+| `--channel <channel>` | Yes | -- | Broadcast channel id or name |
+| `--question <text>` | Yes | -- | Poll question text |
+| `--choices <json>` | Yes | -- | Choices as JSON array of strings (at least 2) |
+| `--duration <minutes>` | No | `120` | How long the poll stays open, in minutes |
 
 #### `poll votes` options
 
@@ -517,7 +528,7 @@ Polls are only available for Slack-connected teams. Non-Slack teams will receive
 
 ## Output Format
 
-All command output is written to **stdout** as a JSON envelope. Diagnostic messages (debug output, Commander.js help/errors) go to **stderr**.
+All command output is written to **stdout** as a JSON envelope. Diagnostic messages (Commander.js help/errors) go to **stderr**.
 
 ### JSON Envelope
 
@@ -615,7 +626,7 @@ Key behaviors:
 ### List standups
 
 ```shell
-geekbot standup list --output json
+geekbot standup list
 ```
 
 ```json
@@ -657,7 +668,7 @@ geekbot standup create \
   "metadata": {
     "timestamp": "2026-03-17T10:05:00.000Z",
     "operation": "created",
-    "undo": "geekbot standup delete 789 --yes"
+    "undo": null
   }
 }
 ```

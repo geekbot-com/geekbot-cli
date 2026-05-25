@@ -24,8 +24,7 @@ Run `geekbot standup list` to get the user's standups.
 - **Multiple standups**: Present a short list (ID, name, channel) and ask
   which one. If the user's request hints at one ("my daily"), match on name.
 - **No standups**: The user might not be a participant in any standup.
-  Suggest they check with their manager or run `geekbot standup list --admin`
-  if they're an admin.
+  Suggest they check with their manager.
 
 ### Step 2: Fetch questions
 
