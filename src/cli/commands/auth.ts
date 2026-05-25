@@ -55,7 +55,7 @@ export function createAuthCommand(): Command {
 					globalOpts,
 				);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 

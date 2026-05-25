@@ -122,7 +122,7 @@ export async function handleAuthSetup(
  */
 export async function handleAuthLogin(
 	options: AuthLoginOptions,
-	globalOpts: GlobalOptions,
+	_globalOpts: GlobalOptions,
 ): Promise<void> {
 	const token = await runLoopbackFlow(
 		{
@@ -131,11 +131,11 @@ export async function handleAuthLogin(
 			ttlDays: options.ttlDays,
 			timeoutMs: options.timeoutMs,
 		},
-		{ ...options.loopback, debug: globalOpts.debug },
+		options.loopback,
 	);
 
 	// Verify the token works against the api before persisting it.
-	const client = createHttpClient(token.access_token, { debug: globalOpts.debug });
+	const client = createHttpClient(token.access_token);
 	const raw = await client.get<unknown>("/v1/me");
 	const meResponse = MeResponseSchema.parse(raw);
 
