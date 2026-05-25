@@ -66,12 +66,6 @@ Returns (v2): `data` includes `id`, `name`, `channel`, `time`, `timezone`,
 `members` (array of `{ id, email?, username?, realname? }` — optional fields
 populated by `--include`).
 
-Notes:
-- The `text` field replaces v1's `question` field.
-- `choices` is always present (empty array for free-text questions, populated
-  for multiple-choice questions).
-- `answer_type` indicates the response shape (e.g. free-text vs choice).
-
 This is the primary way to discover question IDs for report submission.
 
 ### standup create (v2)
@@ -137,9 +131,6 @@ Don't re-run on ambiguous outcomes; list first with `geekbot standup list`.
 
 Returns: `data` is the created standup object. `metadata.undo` is `null`
 (the CLI cannot delete standups; use the Geekbot web dashboard).
-
-**Tip:** If you know the user's timezone from `geekbot me show`, pass it
-explicitly instead of relying on `user_local`.
 
 **Limitation:** The `--days` flag controls which days of the week the standup
 runs, but there is no flag for frequency (bi-weekly, monthly, etc.). For
