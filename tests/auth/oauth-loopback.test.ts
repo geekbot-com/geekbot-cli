@@ -10,6 +10,7 @@ import {
 	startLoopbackServer,
 } from "../../src/auth/oauth-loopback.ts";
 import { CliError } from "../../src/errors/cli-error.ts";
+import { ExitCode } from "../../src/errors/exit-codes.ts";
 
 const BASE = "https://oauth.test.geekbot.com";
 const CLIENT_ID = "geekbot-cli";
@@ -252,6 +253,29 @@ describe("startLoopbackServer", () => {
 		}
 	});
 
+	test("plan_does_not_allow_api_access maps to a forbidden CliError and serves the upgrade page", async () => {
+		const server = await startLoopbackServer();
+		try {
+			const callback = server.awaitCallback("s", 5000).catch((e) => e);
+			const res = await fetch(
+				`${server.redirectUri}?error=access_denied&error_description=plan_does_not_allow_api_access&state=s`,
+			);
+			expect(res.status).toBe(400);
+			const html = await res.text();
+			expect(html).toContain("API access not available on this plan");
+			expect(html).toContain("https://geekbot.com/pricing");
+			expect(html).not.toContain("plan_does_not_allow_api_access");
+
+			const e = await callback;
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("plan_does_not_allow_api_access");
+			expect((e as CliError).exitCode).toBe(ExitCode.FORBIDDEN);
+			expect((e as CliError).suggestion).toContain("Upgrade");
+		} finally {
+			await server.close();
+		}
+	});
+
 	test("non-/callback paths return 404", async () => {
 		const server = await startLoopbackServer();
 		try {
@@ -274,6 +298,25 @@ describe("startLoopbackServer", () => {
 		} finally {
 			await server.close();
 		}
+	});
+
+	test("close() right after rejection still flushes the error HTML to the client", async () => {
+		// Regression: the runLoopbackFlow finally{} block calls close() in the
+		// same microtask as the error rejection. Abrupt server.stop(true) used
+		// to abort the in-flight response and the browser saw
+		// ERR_CONNECTION_REFUSED instead of our upgrade page.
+		const server = await startLoopbackServer();
+		const fetchPromise = fetch(
+			`${server.redirectUri}?error=access_denied&error_description=plan_does_not_allow_api_access&state=s`,
+		);
+		const callbackErr = server.awaitCallback("s", 5000).catch((e) => e);
+		await callbackErr;
+		// Mirror runLoopbackFlow: close immediately after the rejection.
+		await server.close();
+		const res = await fetchPromise;
+		expect(res.status).toBe(400);
+		const html = await res.text();
+		expect(html).toContain("API access not available on this plan");
 	});
 
 	test("awaitCallback times out", async () => {

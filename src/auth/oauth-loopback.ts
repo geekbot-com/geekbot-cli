@@ -182,10 +182,25 @@ h1{margin:0 0 8px;font-size:20px}</style></head>
 <body><div class="box"><h1>✓ Signed in to Geekbot CLI</h1>
 <p>You can close this tab and return to your terminal.</p></div></body></html>`;
 
+function escapeHtml(s: string): string {
+	return s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c] ?? c);
+}
+
+const PLAN_NOT_ALLOWED_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Geekbot CLI</title>
+<style>body{font-family:system-ui;text-align:center;padding:48px;color:#222}
+.box{max-width:520px;margin:auto;padding:24px;border:1px solid #eee;border-radius:8px}
+h1{margin:0 0 8px;font-size:20px}
+a.btn{display:inline-block;margin-top:16px;padding:10px 18px;background:#3578e5;color:#fff;text-decoration:none;border-radius:6px}</style></head>
+<body><div class="box"><h1>API access not available on this plan</h1>
+<p>Your current Geekbot plan does not include API access. Upgrade your plan to use the Geekbot CLI.</p>
+<a class="btn" href="https://geekbot.com/pricing" target="_blank" rel="noopener">View pricing</a>
+<p style="margin-top:24px;color:#666">You can close this tab and return to your terminal.</p></div></body></html>`;
+
 const ERROR_PAGE = (msg: string): string =>
 	`<!doctype html><html><head><meta charset="utf-8"><title>Geekbot CLI</title></head>
 <body style="font-family:system-ui;padding:48px"><h1>Sign-in failed</h1>
-<p>${msg.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c] ?? c)}</p>
+<p>${escapeHtml(msg)}</p>
 <p>Return to your terminal for details.</p></body></html>`;
 
 /**
@@ -222,15 +237,12 @@ export async function startLoopbackServer(): Promise<LoopbackServer> {
 			if (error) {
 				consumed = true;
 				const description = url.searchParams.get("error_description") ?? "";
-				rejectCallback(
-					new CliError(
-						description ? `${error}: ${description}` : error,
-						`oauth_${error}`,
-						ExitCode.AUTH,
-						false,
-					),
-				);
-				return new Response(ERROR_PAGE(`${error}${description ? `: ${description}` : ""}`), {
+				rejectCallback(mapOauthError(error, description));
+				const body =
+					description === "plan_does_not_allow_api_access"
+						? PLAN_NOT_ALLOWED_PAGE
+						: ERROR_PAGE(`${error}${description ? `: ${description}` : ""}`);
+				return new Response(body, {
 					status: 400,
 					headers: { "Content-Type": "text/html; charset=utf-8" },
 				});
@@ -306,6 +318,14 @@ export async function startLoopbackServer(): Promise<LoopbackServer> {
 		redirectUri,
 		awaitCallback,
 		close: async () => {
+			// Graceful: wait for the in-flight response (success or error HTML
+			// page) to flush before closing the listening socket. On the error
+			// path the rejection schedules close() in the same microtask the
+			// response was queued, and abrupt close races the response —
+			// browser sees ERR_CONNECTION_REFUSED. Force-close after 2s in case
+			// a client never reads.
+			const stopped = server.stop();
+			await Promise.race([stopped, new Promise<void>((resolve) => setTimeout(resolve, 2000))]);
 			server.stop(true);
 		},
 	};
@@ -440,6 +460,9 @@ function oauthError(payload: unknown, status: number): CliError {
 		isObject(payload) && typeof payload.error_description === "string"
 			? payload.error_description
 			: "";
+	if (description === "plan_does_not_allow_api_access") {
+		return planDoesNotAllowApiAccessError();
+	}
 	const message = description ? `${error}: ${description}` : error;
 	const exitCode = status === 401 || status === 403 ? ExitCode.AUTH : ExitCode.API_ERROR;
 	return new CliError(
@@ -449,6 +472,34 @@ function oauthError(payload: unknown, status: number): CliError {
 		status >= 500,
 		undefined,
 		{ status },
+	);
+}
+
+/**
+ * Translates an OAuth redirect-style error (error + error_description query
+ * params on the loopback callback) into a CliError. The api signals plan-based
+ * rejection with error_description=plan_does_not_allow_api_access; surface
+ * that as a clear, non-retryable error instead of a generic OAuth failure.
+ */
+function mapOauthError(error: string, description: string): CliError {
+	if (description === "plan_does_not_allow_api_access") {
+		return planDoesNotAllowApiAccessError();
+	}
+	return new CliError(
+		description ? `${error}: ${description}` : error,
+		`oauth_${error}`,
+		ExitCode.AUTH,
+		false,
+	);
+}
+
+function planDoesNotAllowApiAccessError(): CliError {
+	return new CliError(
+		"Your Geekbot plan does not allow API access.",
+		"plan_does_not_allow_api_access",
+		ExitCode.FORBIDDEN,
+		false,
+		"Upgrade your plan to enable API access: https://geekbot.com/pricing",
 	);
 }
 
