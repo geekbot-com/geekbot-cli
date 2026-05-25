@@ -21,4 +21,26 @@ export function resolveApiBaseUrl(envValue?: string): string {
 	return envValue;
 }
 
+export function resolveOAuthBaseUrl(envValue?: string): string {
+	if (envValue === undefined) {
+		return "https://oauth.geekbot.com";
+	}
+	if (!envValue.startsWith("https://")) {
+		throw new CliError(
+			"GEEKBOT_OAUTH_BASE_URL must use HTTPS to prevent token interception.",
+			"validation_error",
+			ExitCode.VALIDATION,
+			false,
+			"Set GEEKBOT_OAUTH_BASE_URL to an https:// URL.",
+		);
+	}
+	return envValue;
+}
+
 export const API_BASE_URL = resolveApiBaseUrl(process.env.GEEKBOT_API_BASE_URL);
+export const OAUTH_BASE_URL = resolveOAuthBaseUrl(process.env.GEEKBOT_OAUTH_BASE_URL);
+export const OAUTH_CLIENT_ID = "geekbot-cli";
+
+/** Allowed CLI token lifetimes (days). Mirrors the auth server's whitelist. */
+export const OAUTH_CLI_ALLOWED_TTL_DAYS = [7, 30, 90, 180, 365] as const;
+export type OAuthCliTtlDays = (typeof OAUTH_CLI_ALLOWED_TTL_DAYS)[number];

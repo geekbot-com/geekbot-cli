@@ -5,7 +5,11 @@ import {
 	API_BASE_URL,
 	APP_NAME,
 	APP_VERSION,
+	OAUTH_BASE_URL,
+	OAUTH_CLI_ALLOWED_TTL_DAYS,
+	OAUTH_CLIENT_ID,
 	resolveApiBaseUrl,
+	resolveOAuthBaseUrl,
 } from "../../src/utils/constants.ts";
 
 describe("constants", () => {
@@ -23,6 +27,18 @@ describe("constants", () => {
 
 	test("API_BASE_URL defaults to https://api.geekbot.com", () => {
 		expect(API_BASE_URL).toBe("https://api.geekbot.com");
+	});
+
+	test("OAUTH_BASE_URL defaults to https://oauth.geekbot.com", () => {
+		expect(OAUTH_BASE_URL).toBe("https://oauth.geekbot.com");
+	});
+
+	test("OAUTH_CLIENT_ID equals 'geekbot-cli'", () => {
+		expect(OAUTH_CLIENT_ID).toBe("geekbot-cli");
+	});
+
+	test("OAUTH_CLI_ALLOWED_TTL_DAYS exposes the auth server's whitelist", () => {
+		expect([...OAUTH_CLI_ALLOWED_TTL_DAYS]).toEqual([7, 30, 90, 180, 365]);
 	});
 });
 
@@ -57,5 +73,33 @@ describe("resolveApiBaseUrl", () => {
 
 	test("rejects uppercase HTTPS scheme (case-sensitive check)", () => {
 		expect(() => resolveApiBaseUrl("HTTPS://api.geekbot.com")).toThrow(CliError);
+	});
+});
+
+describe("resolveOAuthBaseUrl", () => {
+	test("returns default when no override provided", () => {
+		expect(resolveOAuthBaseUrl(undefined)).toBe("https://oauth.geekbot.com");
+	});
+
+	test("accepts valid HTTPS override", () => {
+		expect(resolveOAuthBaseUrl("https://staging-oauth.geekbot.com")).toBe(
+			"https://staging-oauth.geekbot.com",
+		);
+	});
+
+	test("rejects HTTP override (plaintext exfiltrates token)", () => {
+		expect(() => resolveOAuthBaseUrl("http://evil.com")).toThrow(CliError);
+	});
+
+	test("rejects non-URL override", () => {
+		expect(() => resolveOAuthBaseUrl("not-a-url")).toThrow(CliError);
+	});
+
+	test("rejects empty string", () => {
+		expect(() => resolveOAuthBaseUrl("")).toThrow(CliError);
+	});
+
+	test("error message mentions HTTPS requirement", () => {
+		expect(() => resolveOAuthBaseUrl("http://evil.com")).toThrow(/HTTPS/i);
 	});
 });

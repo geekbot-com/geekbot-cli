@@ -31,9 +31,12 @@ Run `check-cli.sh` on first invocation. If it fails:
 - **CLI not found**: Install via `npm install -g geekbot-cli` (requires
   Bun >= 1.3.5 runtime). Note: `npx geekbot-cli` also requires Bun on
   PATH — it is not a Node.js fallback.
-- **Auth not configured**: Guide the user to run `geekbot auth setup`
-  which stores the API key in the OS keychain. Alternatively they can
-  set `GEEKBOT_API_KEY` as an environment variable.
+- **Auth not configured**: Guide the user to run `geekbot auth login`,
+  which uses the OAuth 2.1 authorization-code + PKCE flow with a
+  `http://127.0.0.1:<port>/callback` loopback redirect and writes the
+  resulting `cli_*` token to the OS keychain. As a fallback they can use
+  `geekbot auth setup --api-key <KEY>` with a dashboard API key, or set
+  `GEEKBOT_API_KEY` as an environment variable.
 
 Do not attempt any Geekbot operation until both checks pass.
 
@@ -238,7 +241,7 @@ exit code.
 |-----------|---------|--------------|
 | 0 | Success | Proceed normally |
 | 3 | Not found | Parse `error.suggestion` — it lists valid IDs. Offer them to the user. |
-| 4 | Auth failed | Guide user through `geekbot auth setup`. Do not retry. |
+| 4 | Auth failed | Guide user through `geekbot auth login` (or `geekbot auth setup --api-key` as fallback). Do not retry. |
 | 5 | Forbidden | Explain permission issue. The user may need admin access. |
 | 6 | Validation | Show `error.message`, help the user fix the input. |
 | 7 | Network | If `error.retryable` is true, retry once after 2s silently. If it fails again, report. |
@@ -253,7 +256,8 @@ exit code.
 - **Inventing report answers** — if the user didn't provide enough context
   for a question, ask. Never guess or fabricate.
 - **Retrying auth errors** — exit code 4 is never transient. Guide the user
-  to `geekbot auth setup` instead.
+  to `geekbot auth login` (or `geekbot auth setup --api-key` as fallback)
+  instead.
 - **Skipping confirmation for deletes** — always show what will be deleted
   and get explicit approval, even if it feels obvious.
 - **Dumping raw JSON** — format output as tables, summaries, or narratives.

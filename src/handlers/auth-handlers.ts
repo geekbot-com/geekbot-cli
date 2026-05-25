@@ -1,4 +1,5 @@
 import { deleteKeychainKey, getKeychainKey, setKeychainKey } from "../auth/keychain.ts";
+import { type LoopbackDeps, runLoopbackFlow } from "../auth/oauth-loopback.ts";
 import { resolveCredential } from "../auth/resolver.ts";
 import type { GlobalOptions } from "../cli/globals.ts";
 import { CliError } from "../errors/cli-error.ts";
@@ -7,11 +8,25 @@ import { createHttpClient } from "../http/client.ts";
 import { success } from "../output/envelope.ts";
 import { writeOutput } from "../output/formatter.ts";
 import { MeResponseSchema } from "../schemas/user.ts";
+import type { OAuthCliTtlDays } from "../utils/constants.ts";
 
 // ── Option Interfaces ─────────────────────────────────────────────────
 
 export interface AuthSetupOptions {
 	apiKey?: string;
+}
+
+export interface AuthLoginOptions {
+	/** Skip the browser-open attempt — used in tests and headless agents. */
+	noBrowser?: boolean;
+	/** Friendly name shown next to the issued CLI token. Defaults to hostname. */
+	deviceName?: string;
+	/** Token lifetime in days. Must be one of 7, 30, 90, 180, 365. */
+	ttlDays?: OAuthCliTtlDays;
+	/** Override callback wait timeout (ms). */
+	timeoutMs?: number;
+	/** Hook for tests to mock fetch / server / browser opener / prompt. */
+	loopback?: LoopbackDeps;
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────
@@ -92,6 +107,64 @@ export async function handleAuthSetup(
 			authenticated: true,
 			username: meResponse.user.username,
 			email: meResponse.user.email,
+		}),
+	);
+}
+
+/**
+ * Handle `geekbot auth login` command.
+ *
+ * Runs the OAuth 2.1 authorization-code + PKCE flow with a loopback redirect:
+ *   1. Start a 127.0.0.1 HTTP listener on a random port
+ *   2. Open the browser at /v2/authorize?...&redirect_uri=http://127.0.0.1:<port>/callback
+ *   3. Wait for the callback containing { code, state }, validate state, exchange code → cli_* token
+ *   4. Verify the token via GET /v1/me, then store it in the OS keychain
+ */
+export async function handleAuthLogin(
+	options: AuthLoginOptions,
+	globalOpts: GlobalOptions,
+): Promise<void> {
+	const token = await runLoopbackFlow(
+		{
+			noBrowser: options.noBrowser,
+			deviceName: options.deviceName,
+			ttlDays: options.ttlDays,
+			timeoutMs: options.timeoutMs,
+		},
+		{ ...options.loopback, debug: globalOpts.debug },
+	);
+
+	// Verify the token works against the api before persisting it.
+	const client = createHttpClient(token.access_token, { debug: globalOpts.debug });
+	const raw = await client.get<unknown>("/v1/me");
+	const meResponse = MeResponseSchema.parse(raw);
+
+	const existing = getKeychainKey();
+	if (existing) {
+		process.stderr.write("Replacing existing API key in keychain\n");
+	}
+
+	try {
+		setKeychainKey(token.access_token);
+	} catch {
+		throw new CliError(
+			"Failed to store CLI token in OS keychain.",
+			"keychain_unavailable",
+			ExitCode.GENERAL,
+			false,
+			'OS keychain may be unavailable. Use GEEKBOT_API_KEY environment variable instead: export GEEKBOT_API_KEY="your-token"',
+		);
+	}
+
+	writeOutput(
+		success({
+			authenticated: true,
+			method: "oauth_loopback",
+			username: meResponse.user.username,
+			email: meResponse.user.email,
+			token_type: token.token_type,
+			scope: token.scope,
+			expires_in: token.expires_in,
 		}),
 	);
 }

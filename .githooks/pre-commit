@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# Pre-commit hook for geekbot-cli.
+# Mirrors the lint + typecheck gates in .github/workflows/ci.yml so
+# CI failures get caught locally before you push.
+#
+# Opt in: `git config core.hooksPath .githooks` (run once per clone).
+# Skip a single commit: `git commit --no-verify` (avoid as a habit).
+
+set -e
+
+if ! command -v bun >/dev/null 2>&1; then
+	echo "pre-commit: bun is not on PATH; skipping lint/typecheck." >&2
+	exit 0
+fi
+
+echo "pre-commit: bun run lint"
+bun run lint
+
+echo "pre-commit: bunx tsc --noEmit"
+bunx tsc --noEmit
