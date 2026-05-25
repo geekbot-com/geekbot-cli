@@ -60,7 +60,7 @@ const V2_POLL = {
 	owner: "U999",
 	created: "2026-01-01T00:00:00+00:00",
 	updated: "2026-01-01T00:00:00+00:00",
-	members: ["U1", "U2"],
+	members: [{ id: "U1" }, { id: "U2" }],
 };
 
 const V2_VOTES = {

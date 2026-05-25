@@ -20,7 +20,14 @@ export const V2PollSchema = z.object({
 	owner: z.string(),
 	created: z.string(),
 	updated: z.string(),
-	members: z.array(z.string()),
+	members: z.array(
+		z.object({
+			id: z.string(),
+			email: z.string().optional(),
+			username: z.string().optional(),
+			realname: z.string().optional(),
+		}),
+	),
 	questions: z.array(V2QuestionSchema).optional(),
 });
 
@@ -32,7 +39,7 @@ export const V2PollItemResponseSchema = v2ItemEnvelope(V2PollSchema);
 const V2PollChoiceSchema = z.object({
 	text: z.string(),
 	votes: z.number(),
-	voters: z.array(z.string()).optional(),
+	voters: z.array(z.string()).nullable(),
 });
 
 const V2PollCategorySchema = z.object({
@@ -43,7 +50,7 @@ const V2PollCategorySchema = z.object({
 const V2PollResponseSchema = z.object({
 	text: z.string(),
 	categories: z.array(z.string()).optional().default([]),
-	user_id: z.string().optional(),
+	user_id: z.string().nullable(),
 });
 
 const V2PollQuestionResultSchema = z.object({

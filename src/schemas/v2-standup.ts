@@ -22,7 +22,14 @@ export const V2StandupSchema = z.object({
 	owner: z.string(),
 	created: z.string(),
 	updated: z.string(),
-	members: z.array(z.string()),
+	members: z.array(
+		z.object({
+			id: z.string(),
+			email: z.string().optional(),
+			username: z.string().optional(),
+			realname: z.string().optional(),
+		}),
+	),
 	questions: z.array(V2QuestionSchema).optional(),
 });
 

@@ -294,7 +294,8 @@ Always scope data fetches to be useful but not excessive:
 **Question the user asks:** "How engaged is my team?" / "What's our response rate?"
 
 **Method:**
-1. Fetch standup details: `geekbot standup get <id>` → get member count
+1. Fetch standup details: `geekbot standup get <id> --include member_realname`
+   → get member list with names
 2. Fetch reports for the period: `geekbot report list --standup-id <id> --after <start>`
 3. Count the active days in the period — days that match the standup's `days`
    field. For a Mon–Fri standup over 30 calendar days, that's ~22 working
@@ -303,8 +304,9 @@ Always scope data fetches to be useful but not excessive:
 5. Response rate = reports submitted ÷ (members × active days)
 
 **Resolving user IDs to names:** Report data uses user IDs (like `U08LXSA31BJ`).
-To show human-readable names in analytics output, cross-reference with
-`geekbot team list` which returns member names alongside IDs.
+Pass `--include member_realname` (and/or `member_username`, `member_email`) to
+`standup get` to enrich the member list with names in the same call. Fall back
+to `geekbot team list` only when you need users outside the standup's roster.
 
 **Presentation:** Single percentage for the period, plus per-member breakdown
 if the user wants details.
@@ -314,7 +316,7 @@ if the user wants details.
 **Question:** "Who hasn't posted?" / "Who's missing from standups?"
 
 **Method:**
-1. Fetch member list from `geekbot standup get <id>`
+1. Fetch member list with names: `geekbot standup get <id> --include member_realname`
 2. Fetch reports: `geekbot report list --standup-id <id> --after <start>`
 3. Extract unique `user_id` from reports
 4. Diff: members not in report submitters = gaps

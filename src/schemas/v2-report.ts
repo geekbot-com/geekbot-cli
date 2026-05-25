@@ -14,7 +14,7 @@ export const V2ReportSchema = z.object({
 	id: z.number(),
 	standup_id: z.number(),
 	standup_name: z.string(),
-	user_id: z.string(),
+	user_id: z.string().nullable(),
 	posted_at: z.string().nullable(),
 	is_anonymous: z.boolean(),
 	is_confidential: z.boolean(),

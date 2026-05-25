@@ -25,11 +25,14 @@ export function createStandupCommand(): Command {
 		.option("--created-until <date>", "ISO 8601 or YYYY-MM-DD (exclusive)")
 		.option("--cursor <token>", "Opaque pagination cursor from a previous response")
 		.option("--page-size <n>", "Page size (1-100, default 25)")
-		.option("--include <fields>", "Comma-separated extras: questions")
+		.option(
+			"--include <fields>",
+			"Comma-separated extras: questions, member_email, member_username, member_realname",
+		)
 		.option("--name <name>", "Client-side substring filter on name (applied after fetch)")
 		.addHelpText(
 			"after",
-			"\nExamples:\n  geekbot standup list\n  geekbot standup list --state active --page-size 50\n  geekbot standup list --include questions\n  geekbot standup list --broadcast-channel C0123ABCD",
+			"\nExamples:\n  geekbot standup list\n  geekbot standup list --state active --page-size 50\n  geekbot standup list --include questions\n  geekbot standup list --include member_email,member_username,member_realname\n  geekbot standup list --broadcast-channel C0123ABCD",
 		)
 		.action(async function (this: Command) {
 			const globalOpts = getGlobalOptions(this);
@@ -58,10 +61,13 @@ export function createStandupCommand(): Command {
 		.command("get")
 		.description("Get a standup by ID (v2)")
 		.argument("<id>", "Standup ID (numeric)")
-		.option("--include <fields>", "Comma-separated extras: questions")
+		.option(
+			"--include <fields>",
+			"Comma-separated extras: questions, member_email, member_username, member_realname",
+		)
 		.addHelpText(
 			"after",
-			"\nExamples:\n  geekbot standup get 123\n  geekbot standup get 123 --include questions",
+			"\nExamples:\n  geekbot standup get 123\n  geekbot standup get 123 --include questions\n  geekbot standup get 123 --include member_email",
 		)
 		.action(async function (this: Command, id: string) {
 			const globalOpts = getGlobalOptions(this);

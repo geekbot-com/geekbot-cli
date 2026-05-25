@@ -31,6 +31,7 @@ geekbot standup list --channel "#status"        # filter by channel (case-insens
 geekbot standup list --mine                     # only standups you are a member of
 geekbot standup list --member "UHNM44125"       # only standups a specific user is in
 geekbot standup list --mine --brief             # combine filters
+geekbot standup list --include member_realname  # enrich members with names
 ```
 
 | Flag | Default | Notes |
@@ -42,6 +43,7 @@ geekbot standup list --mine --brief             # combine filters
 | `--channel <channel>` | — | Case-insensitive substring filter on channel name |
 | `--mine` | `false` | Filter to standups where you appear in the members list |
 | `--member <id>` | — | Filter to standups where the given user ID is a member |
+| `--include <fields>` | — | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
 
 **Note:** `--name`, `--channel`, `--mine`, `--member`, and `--limit` are
 client-side filters applied after fetching. `--mine` makes one extra API call
@@ -49,7 +51,9 @@ client-side filters applied after fetching. `--mine` makes one extra API call
 
 Returns: `data` is an array of standup objects. With `--brief`, each object
 contains only `id`, `name`, `channel`. Without `--brief`, full standup
-objects with `questions`, `users`, and all fields.
+objects with `questions`, `members`, and all fields. `members` is an array
+of `{ id, email?, username?, realname? }` — the optional fields are populated
+when requested via `--include member_email|member_username|member_realname`.
 
 ### standup get
 
@@ -57,11 +61,17 @@ Get full details of a standup including questions with their IDs.
 
 ```bash
 geekbot standup get 123
+geekbot standup get 123 --include member_realname,member_username
 ```
+
+| Flag | Notes |
+|------|-------|
+| `--include <fields>` | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
 
 Returns (v2): `data` includes `id`, `name`, `channel`, `time`, `timezone`,
 `days`, `questions` (array of `{ id, text, position, answer_type, choices }`),
-member info.
+`members` (array of `{ id, email?, username?, realname? }` — optional fields
+populated by `--include`).
 
 Notes:
 - The `text` field replaces v1's `question` field.
@@ -273,17 +283,31 @@ Polls are Slack-only. Non-Slack teams will get a platform error.
 
 ```bash
 geekbot poll list
+geekbot poll list --include questions
+geekbot poll list --include member_email,member_realname
 ```
 
-Returns: array of poll objects.
+| Flag | Notes |
+|------|-------|
+| `--include <fields>` | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
+
+Returns: array of poll objects. `members` is an array of
+`{ id, email?, username?, realname? }` — optional fields populated by
+`--include`.
 
 ### poll get
 
 ```bash
 geekbot poll get 456
+geekbot poll get 456 --include questions,member_realname
 ```
 
-Returns: poll details including question and choices.
+| Flag | Notes |
+|------|-------|
+| `--include <fields>` | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
+
+Returns: poll details including question and choices. `members` has the same
+shape as `poll list`.
 
 ### poll create (v2)
 
