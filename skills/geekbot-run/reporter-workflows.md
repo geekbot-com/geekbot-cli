@@ -21,8 +21,11 @@ Run `geekbot standup list` to get the user's standups.
 
 - **Single standup**: Use it automatically. Mention which one: "I see you're
   in the 'Daily Standup' — let's draft your report for that."
-- **Multiple standups**: Present a short list (ID, name, channel) and ask
-  which one. If the user's request hints at one ("my daily"), match on name.
+- **Multiple standups**: Ask `[PICKER, top-N + Other]` — show the 3
+  standups most likely to match (favour daily/status standups and any
+  hinted at in the user's request) plus "Show me all of them" as the
+  Other option. If the user's request hints at one ("my daily"), match
+  on name first and skip the picker.
 - **No standups**: The user might not be a participant in any standup.
   Suggest they check with their manager.
 
@@ -96,8 +99,9 @@ any unresolved blockers for carry-over.
 
 #### Source C: The user's direct input
 
-**With MCP context:** Show what you found, ask "Anything to add, correct,
-or remove?" — the user validates instead of recalling from scratch.
+**With MCP context:** Show what you found, ask `[CHAT]` — "Anything to
+add, correct, or remove?" Free-form text fits this better than a
+picker; the user is validating prose, not picking from a list.
 
 **Without MCP:** This is the primary source. Let the user dump context
 freely ("What have you been working on?") — you structure it into answers.
@@ -144,7 +148,7 @@ A: Fixed the payment webhook bug and worked on the auth refactor.
 The enriched version is more useful for the team reading the report.
 
 If the user didn't provide enough context for a specific question, ask
-about that question specifically rather than inventing content.
+`[CHAT]` about that question specifically rather than inventing content.
 
 ### Step 5: Review and post
 
@@ -166,6 +170,9 @@ A: Still waiting on the staging environment deploy from DevOps
 
 Ready to submit?
 ```
+
+**Ask:** `[CONFIRM]` — *Approve / Edit / Cancel*. Never submit without
+explicit approval.
 
 On explicit approval, build and execute:
 
@@ -220,8 +227,10 @@ blocker** ("None", "All clear", "N/A", short negatives) or **has blocker**
 
 ### Carry-over presentation
 
-Surface active blockers during step 4: *"In your last report (Tuesday),
-you mentioned waiting on the staging deploy. Is that still blocking you?"*
+Surface active blockers during step 4 with `[PICKER]` — *Still
+blocked / Resolved / Changed* — using the prior blocker as context:
+*"In your last report (Tuesday), you mentioned waiting on the staging
+deploy. Is that still blocking you?"*
 
 - **Still blocked** → include, note it's a carry-over
 - **Resolved** → omit (optionally mention resolution in progress answer)
@@ -264,8 +273,8 @@ If the user says something like "nothing much today" or "same as yesterday":
 ### Report already submitted
 
 If the user tries to submit a report and the CLI returns a conflict (exit
-code 8), they may have already reported today. Inform them and ask if they
-want to view their existing report instead.
+code 8), they may have already reported today. Inform them and ask
+`[PICKER]` — *View existing report / Submit a new one anyway / Cancel*.
 
 ### Standup is inactive or paused
 

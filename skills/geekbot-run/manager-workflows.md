@@ -26,6 +26,9 @@ time, with these 3 questions...") → build directly from their spec
 
 ### Step 2: Template selection (when applicable)
 
+**Ask:** `[PICKER, top-N + Other]` — present the 3 best-matching
+templates plus a "Custom" option for "I want something different."
+
 Load `standup-templates.json`. Present 3-4 relevant options based
 on the user's language:
 
@@ -96,8 +99,9 @@ validate before posting. Strategy:
 
 - If the user pastes `#name` or a channel ID → pass through as-is (the API
   accepts both).
-- If the user is vague ("my engineering channel", "the team room") → **ask**.
-  No silent guesses.
+- If the user is vague ("my engineering channel", "the team room") → **ask**
+  `[CHAT]` — channel names are free-form, no fixed option set. No silent
+  guesses.
 - On `validation_error` from the API after submit, surface `error.message`
   cleanly. The CLI cannot auto-suggest alternatives.
 
@@ -106,7 +110,8 @@ validate before posting. Strategy:
 If the user has not already specified members, **always ask before creating**.
 The v2 API does not auto-populate members when both flags are omitted.
 
-Ask verbosely so the choice is clear:
+**Ask:** `[PICKER]` — two mutually-exclusive options: *Sync from a
+channel* or *Explicit list*. Render verbosely so the choice is clear:
 
 > Who should be in this standup? You have two options:
 > 1. **Sync from a channel** — include everyone in a channel automatically
@@ -120,8 +125,9 @@ Then map the answer to a flag:
 - "Everyone in #channel" → `--sync-channel "#channel"` (channel id or name)
 - "Alice, Bob, Carol" → `geekbot team search <name>` for each →
   collect IDs → `--users "U1,U2,U3"`
-- Names that return multiple matches from `team search` → show them and
-  ask which one
+- Names that return multiple matches from `team search` → ask
+  `[PICKER, top-N + Other]` with the 3 best matches (by display name /
+  username similarity) plus "None of these — give me the user ID"
 - User IDs given directly → pass through to `--users`
 
 `--users` and `--sync-channel` are **mutually exclusive**. Never both.
@@ -134,6 +140,8 @@ Surface `--is-anonymous` proactively when:
   retro psychological safety
 - A template recommends it (e.g. `well-being-check-in` has
   `is_anonymous_recommended: true`)
+
+When you surface the flag, ask `[PICKER]` — *Anonymous / Named*.
 
 Don't volunteer it for daily standups — accountability is the point of those.
 Pass through if the user explicitly asks for anonymous regardless of template.
@@ -155,6 +163,8 @@ Questions:
 
 Ready to create?
 ```
+
+**Ask:** `[CONFIRM]` — *Approve / Edit / Cancel*.
 
 On confirmation, build and execute the CLI command. **Pass member resolution
 explicitly** (`--users` or `--sync-channel`) — never omit both:
@@ -392,8 +402,8 @@ actually shipped."
 **Matching members across tools:** Geekbot uses Slack-style user IDs while
 GitHub/Jira use their own identifiers. Match by email address when available
 (from `geekbot team list` and the external MCP server's user data). If the
-mapping is ambiguous, show the manager what you found and ask them to confirm.
-Cache the mapping for the conversation.
+mapping is ambiguous, show the manager what you found and ask `[CONFIRM]`
+(Approve / Edit / Skip mapping). Cache the mapping for the conversation.
 
 **Presentation:** Be careful with framing — this is not a surveillance tool.
 Frame as "finding gaps between reported work and tracked work so the team
@@ -435,8 +445,9 @@ Trigger on: "what has X been up to", "X's reports", "1-1 prep for X",
 geekbot team search <name>
 ```
 
-This returns matching team members with their IDs. If multiple matches,
-show them and ask which one. If exactly one, proceed.
+This returns matching team members with their IDs. If exactly one,
+proceed. If multiple matches, ask `[PICKER, top-N + Other]` with the
+3 best matches plus "Someone else — let me give the user ID."
 
 ### Step 2: Determine the time range
 

@@ -40,6 +40,33 @@ Run `check-cli.sh` on first invocation. If it fails:
 
 Do not attempt any Geekbot operation until both checks pass.
 
+## Asking the User
+
+Some steps in this skill need to ask the user for input. Render each
+question with whatever interaction primitive your harness provides —
+the question content is identical either way.
+
+- **`[PICKER]`** — a small fixed set of mutually-exclusive options
+  (2–4). If your harness exposes a structured single-select question
+  tool (e.g. Claude Code's `AskUserQuestion`, or any equivalent picker
+  UI), use it. Otherwise present the same options as a numbered list
+  in chat.
+- **`[PICKER, top-N + Other]`** — same as `[PICKER]` but the candidate
+  set may exceed 4 (e.g. "pick one of these 12 standups"). Pre-filter
+  to the 3 most likely options and add an "Other" choice that lets the
+  user name the rest in chat.
+- **`[CONFIRM]`** — a yes/edit/cancel decision before a destructive or
+  externally-visible action. Treat as `[PICKER]` with options
+  *Approve / Edit / Cancel*.
+- **`[CHAT]`** — open-ended question. Always ask in plain prose; a
+  picker doesn't fit.
+
+Tags appear inline in the workflow docs at the point where the
+question is asked. Untagged "ask the user" prose is conversational by
+default. Do not name `AskUserQuestion` (or any other tool) directly in
+prompts to the user — pick the right primitive silently based on your
+harness.
+
 ## How the CLI Works
 
 The CLI follows a noun-verb pattern: `geekbot <resource> <action> [options]`.
@@ -123,6 +150,9 @@ The same person can manage standups and submit reports in one conversation.
 - Identity queries: "what standups am I in", "show my profile"
 
 **When ambiguous**, ask one clarifying question — never more than one.
+Use `[PICKER]` if the disambiguation is between 2–4 named options
+(e.g. manager-vs-reporter intent split with a third "something else"
+fallback), otherwise `[CHAT]`.
 
 ## Manager Workflows
 
@@ -233,11 +263,15 @@ One-shot commands that don't need the full pipeline:
 
 ## Confirmation Policy
 
+All required confirmations are `[CONFIRM]` — render as a structured
+picker (Approve / Edit / Cancel) when the harness supports it, or as
+the same three options in chat.
+
 | Operation | Confirmation required? | What to show |
 |-----------|----------------------|--------------|
-| CREATE standup/poll | Yes | Full config: name, channel, questions, schedule |
-| POST report | Yes, always | Complete draft with all answers |
-| TRIGGER standup | Yes | Which standup, who it targets |
+| CREATE standup/poll | `[CONFIRM]` | Full config: name, channel, questions, schedule |
+| POST report | `[CONFIRM]` — always | Complete draft with all answers |
+| TRIGGER standup | `[CONFIRM]` | Which standup, who it targets |
 | List / Get / Analytics | No | Just execute and present results |
 | Error recovery retries | No | Transparent to user |
 
