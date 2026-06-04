@@ -18,38 +18,35 @@ JSON envelope: `{ ok, data, error, metadata }`. Always check `ok` first.
 
 ### standup list
 
-List standups the authenticated user participates in, with optional
-client-side filtering and a brief output mode.
+List standups visible to the authenticated user via `GET /v2/standups`.
+Cursor-paginated; each invocation returns one page.
 
 ```bash
-geekbot standup list                            # all your standups
-geekbot standup list --admin                    # all team standups (admin only)
-geekbot standup list --brief                    # compact: id, name, channel only
-geekbot standup list --brief --limit 10         # first 10, compact
-geekbot standup list --name "daily"             # filter by name (case-insensitive substring)
-geekbot standup list --channel "#status"        # filter by channel (case-insensitive substring)
-geekbot standup list --mine                     # only standups you are a member of
-geekbot standup list --member "UHNM44125"       # only standups a specific user is in
-geekbot standup list --mine --brief             # combine filters
+geekbot standup list                                 # first page (default 25)
+geekbot standup list --state active --page-size 50   # only active standups, 50 per page
+geekbot standup list --broadcast-channel C0123ABCD   # restrict to a channel id
+geekbot standup list --is-anonymous true             # only anonymous standups
+geekbot standup list --include questions             # expand questions
+geekbot standup list --cursor "<token>"              # next page
 ```
 
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--admin` | `false` | Include all team standups (admin only) |
-| `--brief` | `false` | Return only `id`, `name`, `channel` |
-| `--limit <n>` | — | Cap results to first N standups (applied after filters) |
-| `--name <name>` | — | Case-insensitive substring filter on standup name |
-| `--channel <channel>` | — | Case-insensitive substring filter on channel name |
-| `--mine` | `false` | Filter to standups where you appear in the members list |
-| `--member <id>` | — | Filter to standups where the given user ID is a member |
+| `--state <states>` | — | Comma-separated subset of `active`, `paused` |
+| `--is-anonymous <bool>` | — | `true` or `false` |
+| `--broadcast-channel <id>` | — | Specific channel id (e.g. `C12345`) |
+| `--created-since <date>` | — | ISO 8601 or `YYYY-MM-DD` (inclusive) |
+| `--created-until <date>` | — | ISO 8601 or `YYYY-MM-DD` (exclusive) |
+| `--cursor <token>` | — | Opaque pagination cursor from a previous response |
+| `--page-size <n>` | `25` | Page size (1-100) |
+| `--include <fields>` | — | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
 
-**Note:** `--name`, `--channel`, `--mine`, `--member`, and `--limit` are
-client-side filters applied after fetching. `--mine` makes one extra API call
-(`GET /v1/me`) to resolve your user ID.
-
-Returns: `data` is an array of standup objects. With `--brief`, each object
-contains only `id`, `name`, `channel`. Without `--brief`, full standup
-objects with `questions`, `users`, and all fields.
+Returns: `data` is an array of standup objects, `metadata.next_cursor`
+and `metadata.has_more` drive pagination. Each standup includes `id`,
+`name`, `state`, `time`, `timezone`, `days`, `broadcast_channel`,
+`is_anonymous`, `members`, and (when requested) `questions`. `members`
+is an array of `{ id, email?, username?, realname? }` — optional fields
+populated via `--include member_email|member_username|member_realname`.
 
 ### standup get
 
@@ -57,110 +54,94 @@ Get full details of a standup including questions with their IDs.
 
 ```bash
 geekbot standup get 123
+geekbot standup get 123 --include member_realname,member_username
 ```
 
-Returns: `data` includes `id`, `name`, `channel`, `time`, `timezone`, `days`,
-`questions` (array of `{ id, text }`), member info.
+| Flag | Notes |
+|------|-------|
+| `--include <fields>` | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
+
+Returns (v2): `data` includes `id`, `name`, `channel`, `time`, `timezone`,
+`days`, `questions` (array of `{ id, text, position, answer_type, choices }`),
+`members` (array of `{ id, email?, username?, realname? }` — optional fields
+populated by `--include`).
 
 This is the primary way to discover question IDs for report submission.
 
-### standup create
+### standup create (v2)
 
-Create a new standup. Name and channel are required.
+Create a new standup via `POST /v2/standups`. Only `--channel` and `--questions`
+are required.
 
 ```bash
+# Minimum: channel + questions (free-text)
+geekbot standup create \
+  --channel "#engineering" \
+  --questions '["What did you do?","Any blockers?"]'
+
+# Full example with explicit member list and schedule
 geekbot standup create \
   --name "Sprint Retro" \
   --channel "#engineering" \
   --time "15:00" \
   --timezone "America/Chicago" \
   --days "Fri" \
-  --questions '[{"text": "What went well?"}, {"text": "What could improve?"}]' \
-  --users "U123,U456" \
-  --wait-time 0
+  --questions '[{"text":"What went well?"},{"text":"What could improve?"}]' \
+  --users "U123,U456"
+
+# Multiple-choice question
+geekbot standup create \
+  --channel C0123456789 \
+  --questions '[{"text":"How are you?","choices":["Great","OK","Struggling"]}]'
+
+# Sync members from a different channel + anonymous responses
+geekbot standup create \
+  --channel "#well-being" \
+  --sync-channel "#everyone" \
+  --is-anonymous \
+  --questions '["How are you feeling this week?"]'
 ```
 
 | Flag | Required | Default | Notes |
 |------|----------|---------|-------|
-| `--name <name>` | Yes | — | Standup name |
-| `--channel <channel>` | Yes | — | Slack/Teams channel name |
+| `--channel <channel>` | Yes | — | Broadcast channel **id or name** where reports are posted |
+| `--questions <json>` | Yes | — | JSON. Strings `["q1","q2"]` or objects `[{"text":"q1","choices":["A","B"]}]` |
+| `--name <name>` | No | API picks `"Standup #<broadcast channel>"` | Skill should infer a meaningful name from the questions when the user is vague rather than relying on the API default |
 | `--time <HH:MM>` | No | `10:00` | 24-hour format |
-| `--timezone <tz>` | No | `UTC` | IANA timezone (e.g. `Europe/Athens`) |
-| `--days <days>` | No | `Mon,Tue,Wed,Thu,Fri` | Comma-separated |
-| `--questions <json>` | Yes | — | JSON array: `[{"text": "..."},...]` |
-| `--users <ids>` | No | — | Comma-separated user IDs |
-| `--wait-time <min>` | No | `0` | Minutes between users |
+| `--timezone <tz>` | No | `user_local` (API resolves) | IANA timezone (e.g. `Europe/Athens`) |
+| `--days <days>` | No | `Mon,Tue,Wed,Thu,Fri` | Comma-separated abbreviations |
+| `--users <ids>` | No¹ | — | Comma-separated user IDs (Slack-style, e.g. `U123,U456`) |
+| `--sync-channel <channel>` | No¹ | — | Sync members from this channel (id or name). **Mutually exclusive with `--users`** |
+| `--is-anonymous` | No | `false` | Make all responses anonymous |
 
-Returns: `data` is the created standup object. `metadata` includes an
-`undo` field with the delete command.
+¹ Member resolution is non-default: if neither `--users` nor `--sync-channel`
+is passed, the API does not auto-populate members. The skill must ask the user
+which approach to take rather than calling with neither flag.
 
-**Tip**: If you know the user's timezone from `geekbot me show`, use it
-as the default instead of UTC.
+**Questions schema:**
+- Plain strings → free-text answer
+- `{"text": "..."}` → free-text answer (object form)
+- `{"text": "...", "choices": ["A","B","C"]}` → multiple-choice answer
 
-**Limitation**: The `--days` flag controls which days of the week the standup
+**Idempotency:** the CLI auto-generates an `Idempotency-Key` (UUID v4) per
+invocation. The API stores the request for **24h** scoped to `{teamId, userId, key}`
+with a body hash. HTTP-level retries within the same CLI call reuse the key
+and are safe. **Re-running the command produces a new key → a new standup.**
+Don't re-run on ambiguous outcomes; list first with `geekbot standup list`.
+
+Returns: `data` is the created standup object. `metadata.undo` is `null`
+(the CLI cannot delete standups; use the Geekbot web dashboard).
+
+**Limitation:** The `--days` flag controls which days of the week the standup
 runs, but there is no flag for frequency (bi-weekly, monthly, etc.). For
-non-weekly schedules, create the standup via CLI and direct the user to
-adjust the frequency in the Geekbot web dashboard.
+non-weekly schedules, create via CLI and direct the user to adjust the
+frequency in the Geekbot web dashboard.
 
-### standup update (PATCH)
+**Removed in v2:** `--wait-time` is no longer supported.
 
-Partially update a standup. Only pass the flags you want to change.
-
-```bash
-geekbot standup update 123 --time "09:30" --days "Mon,Wed,Fri"
-geekbot standup update 123 --users "U123,U456,U789"
-geekbot standup update 123 --questions '["What did you do?","Any blockers?"]'
-```
-
-| Flag | Notes |
-|------|-------|
-| `--name <name>` | New standup name |
-| `--channel <channel>` | New channel |
-| `--time <HH:MM>` | New time |
-| `--timezone <tz>` | New timezone |
-| `--days <days>` | New days (replaces all) |
-| `--questions <json>` | New questions (replaces all) |
-| `--wait-time <min>` | New wait time |
-| `--users <ids>` | New member list (replaces all) |
-
-**Important**: `--users` replaces the entire member list. To add a member,
-fetch the current list first, append the new ID, and send the full list.
-
-### standup replace (PUT)
-
-Full replacement of a standup. Name and channel are required; everything
-else uses create defaults if omitted.
-
-```bash
-geekbot standup replace 123 \
-  --name "New Name" \
-  --channel "#new-channel" \
-  --time "11:00" \
-  --timezone "UTC"
-```
-
-Use `replace` only when you want to reset the entire config. Prefer
-`update` for partial changes.
-
-### standup delete
-
-Delete a standup permanently. Always pass `--yes` in agent context.
-
-```bash
-geekbot standup delete 123 --yes
-```
-
-The skill should confirm with the user conversationally before executing.
-
-### standup duplicate
-
-Clone an existing standup with a new name.
-
-```bash
-geekbot standup duplicate 123 --name "Backend Daily v2"
-```
-
-Returns: the new standup object with a new ID.
+**Not in the CLI:** updating, replacing, deleting, and duplicating standups
+are not exposed by the v2 CLI. Direct the user to the Geekbot web dashboard
+for those operations.
 
 ### standup start
 
@@ -230,34 +211,63 @@ Polls are Slack-only. Non-Slack teams will get a platform error.
 
 ```bash
 geekbot poll list
+geekbot poll list --include questions
+geekbot poll list --include member_email,member_realname
 ```
 
-Returns: array of poll objects.
+| Flag | Notes |
+|------|-------|
+| `--include <fields>` | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
+
+Returns: array of poll objects. `members` is an array of
+`{ id, email?, username?, realname? }` — optional fields populated by
+`--include`.
 
 ### poll get
 
 ```bash
 geekbot poll get 456
+geekbot poll get 456 --include questions,member_realname
 ```
 
-Returns: poll details including question and choices.
+| Flag | Notes |
+|------|-------|
+| `--include <fields>` | Comma-separated extras: `questions`, `member_email`, `member_username`, `member_realname` |
 
-### poll create
+Returns: poll details including question and choices. `members` has the same
+shape as `poll list`.
+
+### poll create (v2)
+
+Creates a poll via `POST /v2/polls`.
 
 ```bash
 geekbot poll create \
   --name "Team Lunch" \
   --channel "#general" \
   --question "Where should we eat?" \
-  --choices '["Pizza", "Sushi", "Tacos"]'
+  --choices '["Pizza","Sushi","Tacos"]'
+
+# With a 60-minute window
+geekbot poll create \
+  --name "Quick decision" \
+  --channel C0123456789 \
+  --question "Ship today?" \
+  --choices '["Yes","No"]' \
+  --duration 60
 ```
 
-| Flag | Required |
-|------|----------|
-| `--name <name>` | Yes |
-| `--channel <channel>` | Yes |
-| `--question <text>` | Yes |
-| `--choices <json>` | Yes — JSON array of strings |
+| Flag | Required | Default | Notes |
+|------|----------|---------|-------|
+| `--name <name>` | Yes | — | Poll name |
+| `--channel <channel>` | Yes | — | Broadcast channel **id or name** |
+| `--question <text>` | Yes | — | Single question string |
+| `--choices <json>` | Yes | — | JSON array of strings, **at least 2 entries** |
+| `--duration <minutes>` | No | `120` | Positive integer; how long the poll stays open |
+
+**Idempotency:** same behavior as `standup create` — UUID auto-generated per
+call, 24h API window. Don't re-run on ambiguous outcomes; list first with
+`geekbot poll list`.
 
 ### poll votes
 
@@ -371,8 +381,6 @@ Apply to all commands:
 | Flag | Default | Notes |
 |------|---------|-------|
 | `--api-key <key>` | — | Override env var and keychain |
-| `--output <format>` | `json` | Only `json` currently supported |
-| `--debug` | `false` | Debug output on stderr |
 | `-v, --version` | — | Print version |
 | `--help` | — | Show help text |
 

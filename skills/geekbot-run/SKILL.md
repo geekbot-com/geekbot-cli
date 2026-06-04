@@ -40,6 +40,33 @@ Run `check-cli.sh` on first invocation. If it fails:
 
 Do not attempt any Geekbot operation until both checks pass.
 
+## Asking the User
+
+Some steps in this skill need to ask the user for input. Render each
+question with whatever interaction primitive your harness provides —
+the question content is identical either way.
+
+- **`[PICKER]`** — a small fixed set of mutually-exclusive options
+  (2–4). If your harness exposes a structured single-select question
+  tool (e.g. Claude Code's `AskUserQuestion`, or any equivalent picker
+  UI), use it. Otherwise present the same options as a numbered list
+  in chat.
+- **`[PICKER, top-N + Other]`** — same as `[PICKER]` but the candidate
+  set may exceed 4 (e.g. "pick one of these 12 standups"). Pre-filter
+  to the 3 most likely options and add an "Other" choice that lets the
+  user name the rest in chat.
+- **`[CONFIRM]`** — a yes/edit/cancel decision before a destructive or
+  externally-visible action. Treat as `[PICKER]` with options
+  *Approve / Edit / Cancel*.
+- **`[CHAT]`** — open-ended question. Always ask in plain prose; a
+  picker doesn't fit.
+
+Tags appear inline in the workflow docs at the point where the
+question is asked. Untagged "ask the user" prose is conversational by
+default. Do not name `AskUserQuestion` (or any other tool) directly in
+prompts to the user — pick the right primitive silently based on your
+harness.
+
 ## How the CLI Works
 
 The CLI follows a noun-verb pattern: `geekbot <resource> <action> [options]`.
@@ -64,15 +91,13 @@ Most common operations at a glance:
 
 | Task | Command |
 |------|---------|
-| List my standups | `geekbot standup list` (add `--brief` for compact output, `--name`/`--channel` to filter, `--mine` for member-only, `--member <id>` for a specific user, `--limit <n>` to cap results) |
+| List my standups | `geekbot standup list` (add `--state active`, `--is-anonymous true`, `--broadcast-channel <id>`, or `--page-size <n>` to narrow results) |
 | Get standup details + question IDs | `geekbot standup get <id>` |
-| Create a standup | `geekbot standup create --name "..." --channel "..." --questions '[...]'` |
-| Update a standup (PATCH) | `geekbot standup update <id> --time "09:30"` |
-| Delete a standup | `geekbot standup delete <id> --yes` |
+| Create a standup | `geekbot standup create --channel "..." --questions '[...]' --users "U1,U2"` (or `--sync-channel "#ch"`; `--is-anonymous` optional) |
 | List reports | `geekbot report list --standup-id <id> --limit 10` |
 | Submit a report | `geekbot report create --standup-id <id> --answers '{"<qid>":"..."}'` |
 | My profile + user ID | `geekbot me show` |
-| Create a poll (Slack only) | `geekbot poll create --name "..." --channel "..." --question "..." --choices '[...]'` |
+| Create a poll (Slack only) | `geekbot poll create --name "..." --channel "..." --question "..." --choices '[...]' [--duration 120]` |
 | Search team members | `geekbot team search <query>` (matches username, realname, email) |
 | Check auth | `geekbot auth status` |
 
@@ -108,8 +133,7 @@ Pattern-match on the user's request to pick the right workflow. Don't ask
 The same person can manage standups and submit reports in one conversation.
 
 **Route to Manager Workflows (§ below) when you see:**
-- Creation/config language: "create", "set up", "configure", "schedule",
-  "add members", "change the questions", "duplicate", "delete"
+- Creation/config language: "create", "set up", "configure", "schedule"
 - Analytics language: "how is my team doing", "engagement", "response rate",
   "who hasn't posted", "participation", "trends"
 - Member summary language: "what has X been up to", "X's reports",
@@ -126,6 +150,9 @@ The same person can manage standups and submit reports in one conversation.
 - Identity queries: "what standups am I in", "show my profile"
 
 **When ambiguous**, ask one clarifying question — never more than one.
+Use `[PICKER]` if the disambiguation is between 2–4 named options
+(e.g. manager-vs-reporter intent split with a third "something else"
+fallback), otherwise `[CHAT]`.
 
 ## Manager Workflows
 
@@ -138,32 +165,48 @@ This is the most common and most complex manager operation.
 **If the request is vague** ("set up a standup for my team"), offer templates.
 Load `standup-templates.json` and present the 3–4 most relevant options
 based on context. Templates provide pre-built questions and sensible schedule
-defaults — the user just needs to supply a name and Slack/Teams channel.
+defaults — the user just needs to confirm name, channel, and members.
 
-**Gathering required fields:**
-- `--name` — the standup name (required)
-- `--channel` — Slack/Teams channel to post in (required)
-- `--questions` — JSON array of question objects (required; from template or custom)
-- `--time` — defaults to 10:00 if not specified
+**Gathering required fields (v2):**
+- `--channel` — broadcast channel id or name (required)
+- `--questions` — JSON array (required). Strings `["q1","q2"]` for free-text
+  or `[{"text":"q1","choices":["A","B"]}]` for multiple-choice
+- `--name` — optional. If the user gave a name, use it verbatim. Otherwise
+  infer a meaningful name from the configured questions (use the template
+  name when a template is in play). **Don't** rely on the API default
+  `"Standup #<broadcast channel>"`.
+- `--time` — defaults to `10:00`
 - `--timezone` — infer from `geekbot me show` → `data.timezone` if not given
 - `--days` — defaults to Mon–Fri
-- `--users` — comma-separated user IDs (can add later via `update`)
+- **Members — always ask.** Pass `--users "U1,U2"` for an explicit list or
+  `--sync-channel "#name"` to sync members from a channel. The two flags
+  are mutually exclusive. The API does not auto-populate members when both
+  are omitted — never call without member resolution.
+- `--is-anonymous` — surface proactively for sensitive content (well-being,
+  feedback, retro psychological safety) or templates with
+  `is_anonymous_recommended: true`.
 
 **Always confirm the full configuration with the user before executing.**
-Show: name, channel, questions, schedule, timezone.
+Show: name, channel, members (count + list or sync source), schedule,
+timezone, anonymous flag, questions.
+
+**Idempotency:** the CLI auto-generates a UUID `Idempotency-Key` per call
+(24h API window). Re-running the command creates a new standup. On
+ambiguous outcomes (timeout, partial response), list with
+`geekbot standup list` before retrying.
 
 **Note:** The CLI sets which days of the week to run but cannot set frequency
 (bi-weekly, monthly). For non-weekly schedules, create the standup via CLI
 and tell the user to adjust the frequency in the Geekbot web dashboard.
 
-### Editing / Deleting / Other Operations
+For the full step-by-step wizard (naming, channel resolution, member
+resolution, anonymous-flag policy, edge cases), read `manager-workflows.md`
+§ Standup Creation Wizard.
 
-- **Edit**: Fetch current state with `standup get`, show the user, confirm
-  changes, use `standup update` (PATCH). Use `standup replace` only for
-  full config replacement.
-- **Delete**: Always fetch and show what will be deleted first. Get explicit
-  confirmation. Execute with `--yes`.
-- **Duplicate**: `geekbot standup duplicate <id> --name "New Name"`
+### Other Operations
+
+- **Edit / Delete / Duplicate**: Not available in the CLI. Direct the user
+  to the Geekbot web dashboard for these operations.
 - **Trigger now**: `geekbot standup start <id>` — confirm before executing.
 - **Polls** (Slack only): See `cli-commands.md` for poll commands.
 
@@ -186,8 +229,8 @@ For the full step-by-step workflow, read `manager-workflows.md` §Team Member
 Summary.
 
 **Quick start:** `geekbot team search <name>` → get user ID →
-`geekbot standup list --member <id> --brief` to find their standups →
-`geekbot report list --standup-id <sid> --user-id <id> --after <3 weeks ago> --limit 20` →
+`geekbot standup list` to enumerate standups → for each, fetch reports with
+`geekbot report list --standup-id <sid> --user-id <id> --after <3 weeks ago> --page-size 20` →
 synthesize by work stream, not chronologically.
 
 ## Reporter Workflows
@@ -220,13 +263,15 @@ One-shot commands that don't need the full pipeline:
 
 ## Confirmation Policy
 
+All required confirmations are `[CONFIRM]` — render as a structured
+picker (Approve / Edit / Cancel) when the harness supports it, or as
+the same three options in chat.
+
 | Operation | Confirmation required? | What to show |
 |-----------|----------------------|--------------|
-| CREATE standup/poll | Yes | Full config: name, channel, questions, schedule |
-| UPDATE standup | Yes | Current vs proposed (diff) |
-| DELETE standup | Yes, always | What will be deleted (name, channel, members) |
-| POST report | Yes, always | Complete draft with all answers |
-| TRIGGER standup | Yes | Which standup, who it targets |
+| CREATE standup/poll | `[CONFIRM]` | Full config: name, channel, questions, schedule |
+| POST report | `[CONFIRM]` — always | Complete draft with all answers |
+| TRIGGER standup | `[CONFIRM]` | Which standup, who it targets |
 | List / Get / Analytics | No | Just execute and present results |
 | Error recovery retries | No | Transparent to user |
 
@@ -258,8 +303,6 @@ exit code.
 - **Retrying auth errors** — exit code 4 is never transient. Guide the user
   to `geekbot auth login` (or `geekbot auth setup --api-key` as fallback)
   instead.
-- **Skipping confirmation for deletes** — always show what will be deleted
-  and get explicit approval, even if it feels obvious.
 - **Dumping raw JSON** — format output as tables, summaries, or narratives.
   The user should never see a raw JSON envelope.
 - **Ignoring `error.suggestion`** — when a resource isn't found (exit 3),

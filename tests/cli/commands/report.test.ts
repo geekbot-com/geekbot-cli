@@ -5,6 +5,9 @@ const mockHandleError = mock();
 const mockHandlers = {
 	handleReportList: mock(() => Promise.resolve()),
 	handleReportCreate: mock(() => Promise.resolve()),
+	handleReportGet: mock(() => Promise.resolve()),
+	handleReportEdit: mock(() => Promise.resolve()),
+	handleReportDelete: mock(() => Promise.resolve()),
 };
 mock.module("../../../src/handlers/report-handlers.ts", () => mockHandlers);
 mock.module("../../../src/errors/error-handler.ts", () => ({
@@ -29,29 +32,37 @@ describe("createReportCommand", () => {
 		expect(cmd.name()).toBe("report");
 	});
 
-	test("registers 2 subcommands", () => {
+	test("registers 5 subcommands (list, create, get, edit, delete)", () => {
 		const cmd = createReportCommand();
-		expect(cmd.commands.length).toBe(2);
+		expect(cmd.commands.length).toBe(5);
+		const names = cmd.commands.map((c) => c.name()).sort();
+		expect(names).toEqual(["create", "delete", "edit", "get", "list"]);
 	});
 
-	test("registers 'list' subcommand", () => {
-		const cmd = createReportCommand();
-		expect(cmd.commands.find((c) => c.name() === "list")).toBeDefined();
-	});
-
-	test("registers 'create' subcommand", () => {
-		const cmd = createReportCommand();
-		expect(cmd.commands.find((c) => c.name() === "create")).toBeDefined();
-	});
-
-	test("list subcommand calls handleReportList", async () => {
+	test("list subcommand calls handleReportList with v2 flags", async () => {
 		const program = new Command();
 		addGlobalOptions(program);
 		program.addCommand(createReportCommand());
-		await program.parseAsync(["report", "list", "--api-key", "test"], {
-			from: "user",
-		});
+		await program.parseAsync(
+			[
+				"report",
+				"list",
+				"--view",
+				"summary",
+				"--page-size",
+				"50",
+				"--cursor",
+				"abc",
+				"--api-key",
+				"test",
+			],
+			{ from: "user" },
+		);
 		expect(mockHandlers.handleReportList).toHaveBeenCalled();
+		const opts = mockHandlers.handleReportList.mock.calls[0]?.[0] as Record<string, string>;
+		expect(opts.view).toBe("summary");
+		expect(opts.pageSize).toBe("50");
+		expect(opts.cursor).toBe("abc");
 	});
 
 	test("create subcommand calls handleReportCreate", async () => {
@@ -72,6 +83,41 @@ describe("createReportCommand", () => {
 			{ from: "user" },
 		);
 		expect(mockHandlers.handleReportCreate).toHaveBeenCalled();
+	});
+
+	test("get subcommand calls handleReportGet with id", async () => {
+		const program = new Command();
+		addGlobalOptions(program);
+		program.addCommand(createReportCommand());
+		await program.parseAsync(["report", "get", "456", "--api-key", "test"], {
+			from: "user",
+		});
+		expect(mockHandlers.handleReportGet).toHaveBeenCalled();
+		const [id] = mockHandlers.handleReportGet.mock.calls[0] as [string];
+		expect(id).toBe("456");
+	});
+
+	test("edit subcommand calls handleReportEdit", async () => {
+		const program = new Command();
+		addGlobalOptions(program);
+		program.addCommand(createReportCommand());
+		await program.parseAsync(
+			["report", "edit", "456", "--answers", '{"101":"Corrected"}', "--api-key", "test"],
+			{ from: "user" },
+		);
+		expect(mockHandlers.handleReportEdit).toHaveBeenCalled();
+	});
+
+	test("delete subcommand calls handleReportDelete with --yes", async () => {
+		const program = new Command();
+		addGlobalOptions(program);
+		program.addCommand(createReportCommand());
+		await program.parseAsync(["report", "delete", "456", "--yes", "--api-key", "test"], {
+			from: "user",
+		});
+		expect(mockHandlers.handleReportDelete).toHaveBeenCalled();
+		const [, opts] = mockHandlers.handleReportDelete.mock.calls[0] as [string, { yes?: boolean }];
+		expect(opts.yes).toBe(true);
 	});
 
 	test("action error is caught and passed to handleError", async () => {

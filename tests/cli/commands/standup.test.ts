@@ -6,10 +6,6 @@ const mockHandlers = {
 	handleStandupList: mock(() => Promise.resolve()),
 	handleStandupGet: mock(() => Promise.resolve()),
 	handleStandupCreate: mock(() => Promise.resolve()),
-	handleStandupUpdate: mock(() => Promise.resolve()),
-	handleStandupReplace: mock(() => Promise.resolve()),
-	handleStandupDelete: mock(() => Promise.resolve()),
-	handleStandupDuplicate: mock(() => Promise.resolve()),
 	handleStandupStart: mock(() => Promise.resolve()),
 };
 mock.module("../../../src/handlers/standup-handlers.ts", () => mockHandlers);
@@ -35,9 +31,9 @@ describe("createStandupCommand", () => {
 		expect(cmd.name()).toBe("standup");
 	});
 
-	test("registers 8 subcommands", () => {
+	test("registers 4 subcommands", () => {
 		const cmd = createStandupCommand();
-		expect(cmd.commands.length).toBe(8);
+		expect(cmd.commands.length).toBe(4);
 	});
 
 	test("registers 'list' subcommand", () => {
@@ -55,26 +51,6 @@ describe("createStandupCommand", () => {
 		expect(cmd.commands.find((c) => c.name() === "create")).toBeDefined();
 	});
 
-	test("registers 'update' subcommand", () => {
-		const cmd = createStandupCommand();
-		expect(cmd.commands.find((c) => c.name() === "update")).toBeDefined();
-	});
-
-	test("registers 'replace' subcommand", () => {
-		const cmd = createStandupCommand();
-		expect(cmd.commands.find((c) => c.name() === "replace")).toBeDefined();
-	});
-
-	test("registers 'delete' subcommand", () => {
-		const cmd = createStandupCommand();
-		expect(cmd.commands.find((c) => c.name() === "delete")).toBeDefined();
-	});
-
-	test("registers 'duplicate' subcommand", () => {
-		const cmd = createStandupCommand();
-		expect(cmd.commands.find((c) => c.name() === "duplicate")).toBeDefined();
-	});
-
 	test("registers 'start' subcommand", () => {
 		const cmd = createStandupCommand();
 		expect(cmd.commands.find((c) => c.name() === "start")).toBeDefined();
@@ -90,72 +66,7 @@ describe("createStandupCommand", () => {
 		expect(mockHandlers.handleStandupList).toHaveBeenCalled();
 	});
 
-	test("list subcommand passes --brief flag to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--brief", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ brief: true }),
-			expect.anything(),
-		);
-	});
-
-	test("list subcommand passes --name filter to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--name", "daily", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ name: "daily" }),
-			expect.anything(),
-		);
-	});
-
-	test("list subcommand passes --channel filter to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--channel", "#status", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ channel: "#status" }),
-			expect.anything(),
-		);
-	});
-
-	test("list subcommand passes --mine flag to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--mine", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ mine: true }),
-			expect.anything(),
-		);
-	});
-
-	test("list subcommand passes --member flag to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "list", "--member", "UHNM44125", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
-			expect.objectContaining({ member: "UHNM44125" }),
-			expect.anything(),
-		);
-	});
-
-	test("list subcommand passes all filter options together", async () => {
+	test("list subcommand passes v2 server-side filters to handler", async () => {
 		const program = new Command();
 		addGlobalOptions(program);
 		program.addCommand(createStandupCommand());
@@ -163,13 +74,20 @@ describe("createStandupCommand", () => {
 			[
 				"standup",
 				"list",
-				"--admin",
-				"--brief",
-				"--name",
-				"daily",
-				"--mine",
-				"--member",
-				"U123",
+				"--state",
+				"active",
+				"--is-anonymous",
+				"true",
+				"--broadcast-channel",
+				"C123ABC",
+				"--created-since",
+				"2026-01-01",
+				"--cursor",
+				"opaque",
+				"--page-size",
+				"50",
+				"--include",
+				"questions",
 				"--api-key",
 				"test",
 			],
@@ -177,11 +95,13 @@ describe("createStandupCommand", () => {
 		);
 		expect(mockHandlers.handleStandupList).toHaveBeenCalledWith(
 			expect.objectContaining({
-				admin: true,
-				brief: true,
-				name: "daily",
-				mine: true,
-				member: "U123",
+				state: "active",
+				isAnonymous: "true",
+				broadcastChannel: "C123ABC",
+				createdSince: "2026-01-01",
+				cursor: "opaque",
+				pageSize: "50",
+				include: "questions",
 			}),
 			expect.anything(),
 		);
@@ -270,78 +190,6 @@ describe("createStandupCommand", () => {
 		expect(opts.days).toBeUndefined();
 	});
 
-	test("update subcommand calls handleStandupUpdate", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(
-			["standup", "update", "42", "--name", "Updated", "--api-key", "test"],
-			{ from: "user" },
-		);
-		expect(mockHandlers.handleStandupUpdate).toHaveBeenCalled();
-	});
-
-	test("update subcommand passes --users to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(
-			["standup", "update", "42", "--users", "111,222", "--api-key", "test"],
-			{ from: "user" },
-		);
-		expect(mockHandlers.handleStandupUpdate).toHaveBeenCalledWith(
-			"42",
-			expect.objectContaining({ users: "111,222" }),
-			expect.anything(),
-		);
-	});
-
-	test("replace subcommand calls handleStandupReplace", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(
-			["standup", "replace", "42", "--name", "Replaced", "--channel", "#new", "--api-key", "test"],
-			{ from: "user" },
-		);
-		expect(mockHandlers.handleStandupReplace).toHaveBeenCalled();
-	});
-
-	test("delete subcommand calls handleStandupDelete", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "delete", "42", "--yes", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandlers.handleStandupDelete).toHaveBeenCalled();
-	});
-
-	test("delete subcommand without --yes passes yes=undefined to handler", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "delete", "42", "--api-key", "test"], { from: "user" });
-		expect(mockHandlers.handleStandupDelete).toHaveBeenCalled();
-		const callArgs = mockHandlers.handleStandupDelete.mock.calls[0] as [
-			string,
-			Record<string, unknown>,
-		];
-		const opts = callArgs[1];
-		expect(opts.yes).toBeUndefined();
-	});
-
-	test("duplicate subcommand calls handleStandupDuplicate", async () => {
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(
-			["standup", "duplicate", "42", "--name", "Copy", "--api-key", "test"],
-			{ from: "user" },
-		);
-		expect(mockHandlers.handleStandupDuplicate).toHaveBeenCalled();
-	});
-
 	test("start subcommand calls handleStandupStart", async () => {
 		const program = new Command();
 		addGlobalOptions(program);
@@ -390,53 +238,6 @@ describe("createStandupCommand", () => {
 				"--api-key",
 				"test",
 			],
-			{ from: "user" },
-		);
-		expect(mockHandleError).toHaveBeenCalled();
-	});
-
-	test("update error is caught and passed to handleError", async () => {
-		mockHandlers.handleStandupUpdate.mockRejectedValueOnce(new Error("update error"));
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(
-			["standup", "update", "42", "--name", "Updated", "--api-key", "test"],
-			{ from: "user" },
-		);
-		expect(mockHandleError).toHaveBeenCalled();
-	});
-
-	test("replace error is caught and passed to handleError", async () => {
-		mockHandlers.handleStandupReplace.mockRejectedValueOnce(new Error("replace error"));
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(
-			["standup", "replace", "42", "--name", "R", "--channel", "#c", "--api-key", "test"],
-			{ from: "user" },
-		);
-		expect(mockHandleError).toHaveBeenCalled();
-	});
-
-	test("delete error is caught and passed to handleError", async () => {
-		mockHandlers.handleStandupDelete.mockRejectedValueOnce(new Error("delete error"));
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(["standup", "delete", "42", "--yes", "--api-key", "test"], {
-			from: "user",
-		});
-		expect(mockHandleError).toHaveBeenCalled();
-	});
-
-	test("duplicate error is caught and passed to handleError", async () => {
-		mockHandlers.handleStandupDuplicate.mockRejectedValueOnce(new Error("duplicate error"));
-		const program = new Command();
-		addGlobalOptions(program);
-		program.addCommand(createStandupCommand());
-		await program.parseAsync(
-			["standup", "duplicate", "42", "--name", "Copy", "--api-key", "test"],
 			{ from: "user" },
 		);
 		expect(mockHandleError).toHaveBeenCalled();

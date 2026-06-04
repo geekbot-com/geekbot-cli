@@ -14,7 +14,7 @@ export function createMeCommand(): Command {
 			try {
 				await handleMeShow(globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -26,7 +26,7 @@ export function createMeCommand(): Command {
 			try {
 				await handleMeTeams(globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 

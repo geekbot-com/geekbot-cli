@@ -8,7 +8,7 @@ describe.skipIf(!API_KEY)("Error Path Integration", () => {
 
 	test("GET non-existent standup returns not_found error", async () => {
 		try {
-			await client.get<unknown>("/v1/standups/999999999");
+			await client.get<unknown>("/v2/standups/999999999");
 			// Should not reach here
 			expect.unreachable("should have thrown");
 		} catch (error) {
@@ -21,7 +21,7 @@ describe.skipIf(!API_KEY)("Error Path Integration", () => {
 
 	test("GET non-existent poll returns not_found error", async () => {
 		try {
-			await client.get<unknown>("/v1/polls/999999999");
+			await client.get<unknown>("/v2/polls/999999999");
 			expect.unreachable("should have thrown");
 		} catch (error) {
 			expect(error).toBeInstanceOf(CliError);
@@ -32,7 +32,7 @@ describe.skipIf(!API_KEY)("Error Path Integration", () => {
 	}, 15000);
 
 	test("invalid API key returns auth error", async () => {
-		const badClient = createHttpClient("invalid-api-key-12345", { debug: false });
+		const badClient = createHttpClient("invalid-api-key-12345");
 		try {
 			await badClient.get<unknown>("/v1/me");
 			expect.unreachable("should have thrown");

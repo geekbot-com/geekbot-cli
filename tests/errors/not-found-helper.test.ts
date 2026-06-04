@@ -26,10 +26,12 @@ function failingClient(): HttpClient {
 
 describe("buildNotFoundSuggestion", () => {
 	test("formats standup alternatives into suggestion string", async () => {
-		const client = mockClient([
-			{ id: 123, name: "Daily Standup" },
-			{ id: 456, name: "Weekly Review" },
-		]);
+		const client = mockClient({
+			data: [
+				{ id: 123, name: "Daily Standup" },
+				{ id: 456, name: "Weekly Review" },
+			],
+		});
 		const suggestion = await buildNotFoundSuggestion(client, "standup");
 		expect(suggestion).toContain("123 (Daily Standup)");
 		expect(suggestion).toContain("456 (Weekly Review)");
@@ -37,7 +39,7 @@ describe("buildNotFoundSuggestion", () => {
 	});
 
 	test("formats poll alternatives into suggestion string", async () => {
-		const client = mockClient([{ id: 10, name: "Lunch Poll" }]);
+		const client = mockClient({ data: [{ id: 10, name: "Lunch Poll" }] });
 		const suggestion = await buildNotFoundSuggestion(client, "poll");
 		expect(suggestion).toContain("10 (Lunch Poll)");
 		expect(suggestion).toContain("geekbot poll list");
@@ -48,7 +50,7 @@ describe("buildNotFoundSuggestion", () => {
 			id: i + 1,
 			name: `Standup ${i + 1}`,
 		}));
-		const client = mockClient(items);
+		const client = mockClient({ data: items });
 		const suggestion = await buildNotFoundSuggestion(client, "standup", 3);
 		expect(suggestion).toContain("1 (Standup 1)");
 		expect(suggestion).toContain("3 (Standup 3)");
@@ -58,7 +60,7 @@ describe("buildNotFoundSuggestion", () => {
 	});
 
 	test("returns create suggestion when list is empty", async () => {
-		const client = mockClient([]);
+		const client = mockClient({ data: [] });
 		const suggestion = await buildNotFoundSuggestion(client, "standup");
 		expect(suggestion).toContain("No standups found");
 		expect(suggestion).toContain("geekbot standup create");
@@ -71,7 +73,7 @@ describe("buildNotFoundSuggestion", () => {
 	});
 
 	test("returns create suggestion for malformed response data", async () => {
-		const client = mockClient("not an array");
+		const client = mockClient("not an envelope");
 		const suggestion = await buildNotFoundSuggestion(client, "standup");
 		expect(suggestion).toContain("No standups found");
 	});

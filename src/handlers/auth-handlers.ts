@@ -38,7 +38,7 @@ export interface AuthLoginOptions {
  */
 export async function handleAuthSetup(
 	options: AuthSetupOptions,
-	globalOpts: GlobalOptions,
+	_globalOpts: GlobalOptions,
 ): Promise<void> {
 	let key: string;
 
@@ -79,7 +79,7 @@ export async function handleAuthSetup(
 	}
 
 	// Verify key by calling /v1/me
-	const client = createHttpClient(key, { debug: globalOpts.debug });
+	const client = createHttpClient(key);
 	const raw = await client.get<unknown>("/v1/me");
 	const meResponse = MeResponseSchema.parse(raw);
 
@@ -122,7 +122,7 @@ export async function handleAuthSetup(
  */
 export async function handleAuthLogin(
 	options: AuthLoginOptions,
-	globalOpts: GlobalOptions,
+	_globalOpts: GlobalOptions,
 ): Promise<void> {
 	const token = await runLoopbackFlow(
 		{
@@ -131,11 +131,11 @@ export async function handleAuthLogin(
 			ttlDays: options.ttlDays,
 			timeoutMs: options.timeoutMs,
 		},
-		{ ...options.loopback, debug: globalOpts.debug },
+		options.loopback,
 	);
 
 	// Verify the token works against the api before persisting it.
-	const client = createHttpClient(token.access_token, { debug: globalOpts.debug });
+	const client = createHttpClient(token.access_token);
 	const raw = await client.get<unknown>("/v1/me");
 	const meResponse = MeResponseSchema.parse(raw);
 
@@ -178,7 +178,7 @@ export async function handleAuthStatus(globalOpts: GlobalOptions): Promise<void>
 		const { apiKey, source } = await resolveCredential({
 			apiKeyFlag: globalOpts.apiKey,
 		});
-		const client = createHttpClient(apiKey, { debug: globalOpts.debug });
+		const client = createHttpClient(apiKey);
 		const raw = await client.get<unknown>("/v1/me");
 		const meResponse = MeResponseSchema.parse(raw);
 		writeOutput(

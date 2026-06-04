@@ -29,8 +29,6 @@ import { handleMeShow, handleMeTeams } from "../../src/handlers/me-handlers.ts";
 
 const defaultGlobalOpts: GlobalOptions = {
 	apiKey: undefined,
-	output: "json",
-	debug: false,
 };
 
 // Sample /v1/me response

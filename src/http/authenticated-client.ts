@@ -13,5 +13,5 @@ export async function createAuthenticatedClient(
 ): Promise<HttpClient> {
 	const resolve = deps?.resolveCredential ?? _resolveCredential;
 	const { apiKey } = await resolve({ apiKeyFlag: globalOpts.apiKey });
-	return createHttpClient(apiKey, { debug: globalOpts.debug });
+	return createHttpClient(apiKey);
 }

@@ -1,0 +1,33 @@
+#!/bin/sh
+# Mirrors the CI coverage gate: runs the unit-test suite with coverage and
+# fails the push if line coverage drops below 95%.
+set -e
+
+COVERAGE_OUTPUT=$(mktemp)
+trap 'rm -f "$COVERAGE_OUTPUT"' EXIT
+
+bun test --coverage \
+	tests/auth/ \
+	tests/http/ \
+	tests/output/ \
+	tests/utils/ \
+	tests/schemas/ \
+	tests/errors/error-handler.test.ts \
+	tests/errors/cli-error.test.ts \
+	tests/errors/not-found-helper.test.ts \
+	tests/errors/exit-codes.test.ts 2>&1 | tee "$COVERAGE_OUTPUT"
+
+COVERAGE=$(grep 'All files' "$COVERAGE_OUTPUT" | awk -F'|' '{for(i=1;i<=NF;i++){gsub(/^ +| +$/,"",$i)}}; {print $3}')
+
+if [ -z "$COVERAGE" ]; then
+	echo "pre-push: could not parse coverage from test output" >&2
+	exit 1
+fi
+
+if awk "BEGIN{exit(!(${COVERAGE} < 95))}"; then
+	echo "pre-push: line coverage ${COVERAGE}% is below 95% threshold" >&2
+	echo "pre-push: bypass with --no-verify if you know what you're doing" >&2
+	exit 1
+fi
+
+echo "pre-push: coverage ${COVERAGE}% (threshold 95%)"

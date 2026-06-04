@@ -54,23 +54,12 @@ describe("handleError", () => {
 		expect(exitCode).toBe(4);
 	});
 
-	test("writes debug context to stderr when debug=true", () => {
+	test("does not write CliError.context to stderr", () => {
 		const err = new CliError("Err", "err", ExitCode.GENERAL, false, undefined, {
 			foo: "bar",
 		});
 		try {
-			handleError(err, true);
-		} catch {}
-		expect(stderrOutput).toContain("foo");
-		expect(stderrOutput).toContain("bar");
-	});
-
-	test("does NOT write debug context when debug=false", () => {
-		const err = new CliError("Err", "err", ExitCode.GENERAL, false, undefined, {
-			foo: "bar",
-		});
-		try {
-			handleError(err, false);
+			handleError(err);
 		} catch {}
 		expect(stderrOutput).toBe("");
 	});
@@ -144,20 +133,6 @@ describe("handleError", () => {
 		} catch {}
 		const envelope = JSON.parse(stdoutOutput.trim());
 		expect(envelope.error.message).toContain("id");
-	});
-
-	test("ZodError writes debug context to stderr when debug=true", () => {
-		const schema = z.object({ id: z.number() });
-		let zodError: unknown;
-		try {
-			schema.parse({});
-		} catch (e) {
-			zodError = e;
-		}
-		try {
-			handleError(zodError, true);
-		} catch {}
-		expect(stderrOutput).toContain("ZodError issues");
 	});
 
 	test("ZodError envelope is not retryable and has a suggestion", () => {

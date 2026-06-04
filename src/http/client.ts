@@ -8,18 +8,13 @@ const INITIAL_BACKOFF_MS = 1000;
 
 export interface HttpClient {
 	get<T>(path: string, params?: Record<string, string>): Promise<T>;
-	post<T>(path: string, body: unknown): Promise<T>;
-	patch<T>(path: string, body: unknown): Promise<T>;
-	put<T>(path: string, body: unknown): Promise<T>;
-	delete(path: string): Promise<null>;
+	post<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T>;
+	patch<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T>;
+	put<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T>;
+	delete(path: string, headers?: Record<string, string>): Promise<null>;
 }
 
-export function createHttpClient(
-	apiKey: string,
-	options?: { debug?: boolean },
-	fetchImpl?: typeof globalThis.fetch,
-): HttpClient {
-	const debug = options?.debug ?? false;
+export function createHttpClient(apiKey: string, fetchImpl?: typeof globalThis.fetch): HttpClient {
 	const _fetch = fetchImpl ?? globalThis.fetch;
 
 	async function request<T>(
@@ -27,6 +22,7 @@ export function createHttpClient(
 		path: string,
 		body?: unknown,
 		params?: Record<string, string>,
+		extraHeaders?: Record<string, string>,
 	): Promise<T> {
 		// Strip trailing slashes to avoid 301 redirects (API quirk)
 		const cleanPath = path.replace(/\/+$/, "");
@@ -47,19 +43,14 @@ export function createHttpClient(
 
 		for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 			try {
-				if (debug && attempt > 0) {
-					process.stderr.write(`[debug] Retry attempt ${attempt} for ${method} ${cleanPath}\n`);
-				}
-
 				const response = await _fetch(url, {
 					method,
 					headers: {
 						// Geekbot API expects raw token, NOT "Bearer <token>"
-						// WARNING: Authorization contains the raw API key.
-						// Never log request/response headers in debug mode.
 						Authorization: apiKey,
 						"Content-Type": "application/json",
 						"User-Agent": `geekbot-skill-cli/${APP_VERSION}`,
+						...(extraHeaders ?? {}),
 					},
 					body: body !== undefined ? JSON.stringify(body) : undefined,
 				});
@@ -76,17 +67,8 @@ export function createHttpClient(
 				// Non-OK response -- parse error and decide retry vs throw
 				const errorMessage = await parseErrorBody(response);
 
-				if (debug) {
-					process.stderr.write(
-						`[debug] HTTP ${response.status} from ${method} ${cleanPath}: ${errorMessage}\n`,
-					);
-				}
-
 				if (isRetryable(response.status) && attempt < MAX_RETRIES) {
 					const backoff = getBackoffMs(response, attempt, INITIAL_BACKOFF_MS);
-					if (debug) {
-						process.stderr.write(`[debug] Retrying in ${backoff}ms\n`);
-					}
 					await Bun.sleep(backoff);
 					continue;
 				}
@@ -99,11 +81,6 @@ export function createHttpClient(
 				// Network-level errors (DNS failure, connection refused, timeout)
 				if (attempt < MAX_RETRIES) {
 					const backoff = INITIAL_BACKOFF_MS * 2 ** attempt;
-					if (debug) {
-						process.stderr.write(
-							`[debug] Network error (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error instanceof Error ? error.message : String(error)}\n`,
-						);
-					}
 					await Bun.sleep(backoff);
 					continue;
 				}
@@ -130,9 +107,13 @@ export function createHttpClient(
 	return {
 		get: <T>(path: string, params?: Record<string, string>) =>
 			request<T>("GET", path, undefined, params),
-		post: <T>(path: string, body: unknown) => request<T>("POST", path, body),
-		patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
-		put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
-		delete: (path: string) => request<null>("DELETE", path),
+		post: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+			request<T>("POST", path, body, undefined, headers),
+		patch: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+			request<T>("PATCH", path, body, undefined, headers),
+		put: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+			request<T>("PUT", path, body, undefined, headers),
+		delete: (path: string, headers?: Record<string, string>) =>
+			request<null>("DELETE", path, undefined, undefined, headers),
 	};
 }

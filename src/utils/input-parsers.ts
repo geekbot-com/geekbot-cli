@@ -73,6 +73,44 @@ export function parseQuestionsInput(raw: string): Array<Record<string, unknown>>
 }
 
 /**
+ * Parse JSON input for --questions flag targeting the v2 API.
+ *
+ * v2 POST /v2/standups expects each question as { text: string, choices?: string[] }.
+ * Accepts the same flexible input as parseQuestionsInput (string or { text } or
+ * { question }) and normalises to the v2 shape. `choices` passes through when present.
+ */
+export function parseQuestionsInputV2(raw: string): Array<Record<string, unknown>> {
+	const v1Shape = parseQuestionsInput(raw);
+	return v1Shape.map((q, index) => {
+		const obj = q as Record<string, unknown>;
+		const text = obj.text ?? obj.question;
+		if (typeof text !== "string") {
+			throw new CliError(
+				`Invalid question at index ${index}. Each item must be a string or have a "text" property.`,
+				"validation_error",
+				ExitCode.VALIDATION,
+				false,
+				'Example: --questions \'[{"text":"Today?","choices":["Yes","No"]}]\' or \'["q1","q2"]\'',
+			);
+		}
+		const out: Record<string, unknown> = { text };
+		if ("choices" in obj) {
+			if (!Array.isArray(obj.choices) || !obj.choices.every((c) => typeof c === "string")) {
+				throw new CliError(
+					`Invalid question at index ${index}. "choices" must be an array of strings.`,
+					"validation_error",
+					ExitCode.VALIDATION,
+					false,
+					'Example: --questions \'[{"text":"Today?","choices":["Yes","No"]}]\'',
+				);
+			}
+			out.choices = obj.choices;
+		}
+		return out;
+	});
+}
+
+/**
  * Parse JSON input for --answers flag.
  * Accepts an object keyed by question ID with string values (shorthand)
  * or {text: string} objects (full).
@@ -231,4 +269,36 @@ export function parseDateFilter(raw: string, label: string): string {
 	}
 
 	return String(Math.floor(date.getTime() / 1000));
+}
+
+/**
+ * Validate a date filter for v2 API endpoints.
+ *
+ * v2 accepts YYYY-MM-DD or ISO 8601 datetime strings; unix timestamps are rejected
+ * because the v2 ListQuery parser expects RFC 3339 / YYYY-MM-DD format.
+ * Returns the input unchanged after validation so it can be passed as-is.
+ */
+export function parseV2DateFilter(raw: string, label: string): string {
+	// Accept YYYY-MM-DD (delegate calendar validation to parseDateFilter)
+	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+		// Reuse parseDateFilter's calendar validation — discard its unix-timestamp output.
+		parseDateFilter(raw, label);
+		return raw;
+	}
+
+	// Accept ISO 8601 datetime: 2026-01-15T10:00:00Z or 2026-01-15T10:00:00+02:00
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/.test(raw)) {
+		const d = new Date(raw);
+		if (!Number.isNaN(d.getTime())) {
+			return raw;
+		}
+	}
+
+	throw new CliError(
+		`Invalid date for ${label}: "${raw}".`,
+		"validation_error",
+		ExitCode.VALIDATION,
+		false,
+		"Accepted formats: YYYY-MM-DD (2026-01-15) or ISO 8601 (2026-01-15T10:00:00Z)",
+	);
 }

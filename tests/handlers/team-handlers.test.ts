@@ -29,8 +29,6 @@ import { handleTeamList, handleTeamSearch } from "../../src/handlers/team-handle
 
 const defaultGlobalOpts: GlobalOptions = {
 	apiKey: undefined,
-	output: "json",
-	debug: false,
 };
 
 // Sample /v1/teams response (single object, NOT array)

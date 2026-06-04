@@ -64,7 +64,6 @@ export async function main(program: Command, argv: string[] = process.argv): Pro
 	try {
 		await program.parseAsync(argv);
 	} catch (error) {
-		const opts = program.opts();
 		if (error instanceof CommanderError) {
 			// Map Commander usage errors (missing args, unknown options, etc.)
 			// to CliError with ExitCode.USAGE so they go through the JSON envelope.
@@ -79,9 +78,9 @@ export async function main(program: Command, argv: string[] = process.argv): Pro
 				false,
 				"Run with --help for usage information",
 			);
-			handleError(usageError, opts.debug === true);
+			handleError(usageError);
 		} else {
-			handleError(error, opts.debug === true);
+			handleError(error);
 		}
 	}
 }

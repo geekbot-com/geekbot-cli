@@ -5,6 +5,8 @@ import {
 	parseChoicesInput,
 	parseDateFilter,
 	parseQuestionsInput,
+	parseQuestionsInputV2,
+	parseV2DateFilter,
 } from "../../src/utils/input-parsers.ts";
 
 describe("parseQuestionsInput", () => {
@@ -460,5 +462,108 @@ describe("parseDateFilter", () => {
 	test("accepts Feb 29 on a leap year", () => {
 		const result = parseDateFilter("2024-02-29", "--before");
 		expect(result).toMatch(/^\d+$/);
+	});
+});
+
+describe("parseQuestionsInputV2", () => {
+	test("converts string array items to {text} objects", () => {
+		const result = parseQuestionsInputV2('["What did you do?"]');
+		expect(result).toEqual([{ text: "What did you do?" }]);
+	});
+
+	test("maps {question} shape to {text}", () => {
+		const result = parseQuestionsInputV2('[{"question":"Any blockers?"}]');
+		expect(result).toEqual([{ text: "Any blockers?" }]);
+	});
+
+	test("passes through {text} unchanged", () => {
+		const result = parseQuestionsInputV2('[{"text":"Today?"}]');
+		expect(result).toEqual([{ text: "Today?" }]);
+	});
+
+	test("preserves choices array when present", () => {
+		const result = parseQuestionsInputV2('[{"text":"Mood?","choices":["good","bad"]}]');
+		expect(result).toEqual([{ text: "Mood?", choices: ["good", "bad"] }]);
+	});
+
+	test("throws validation_error when text is missing", () => {
+		try {
+			parseQuestionsInputV2('[{"answer_type":"text"}]');
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("validation_error");
+		}
+	});
+
+	test("throws validation_error when choices is not a string array", () => {
+		try {
+			parseQuestionsInputV2('[{"text":"q","choices":[1,2,3]}]');
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("validation_error");
+		}
+	});
+
+	test("throws validation_error when choices is not an array", () => {
+		try {
+			parseQuestionsInputV2('[{"text":"q","choices":"nope"}]');
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("validation_error");
+		}
+	});
+});
+
+describe("parseV2DateFilter", () => {
+	test("returns YYYY-MM-DD input unchanged", () => {
+		expect(parseV2DateFilter("2026-01-15", "--before")).toBe("2026-01-15");
+	});
+
+	test("accepts ISO 8601 with Z suffix", () => {
+		expect(parseV2DateFilter("2026-01-15T10:00:00Z", "--before")).toBe("2026-01-15T10:00:00Z");
+	});
+
+	test("accepts ISO 8601 with timezone offset", () => {
+		expect(parseV2DateFilter("2026-01-15T10:00:00+02:00", "--before")).toBe(
+			"2026-01-15T10:00:00+02:00",
+		);
+	});
+
+	test("accepts ISO 8601 with fractional seconds", () => {
+		expect(parseV2DateFilter("2026-01-15T10:00:00.123Z", "--after")).toBe(
+			"2026-01-15T10:00:00.123Z",
+		);
+	});
+
+	test("rejects unix timestamps", () => {
+		try {
+			parseV2DateFilter("1737000000", "--before");
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("validation_error");
+		}
+	});
+
+	test("rejects invalid calendar dates", () => {
+		try {
+			parseV2DateFilter("2026-02-30", "--before");
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+		}
+	});
+
+	test("rejects garbage input", () => {
+		try {
+			parseV2DateFilter("not-a-date", "--before");
+			throw new Error("should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(CliError);
+			expect((e as CliError).code).toBe("validation_error");
+		}
 	});
 });

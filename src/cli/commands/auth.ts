@@ -23,7 +23,7 @@ export function createAuthCommand(): Command {
 			try {
 				await handleAuthSetup({ apiKey: globalOpts.apiKey }, globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -55,7 +55,7 @@ export function createAuthCommand(): Command {
 					globalOpts,
 				);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -68,7 +68,7 @@ export function createAuthCommand(): Command {
 			try {
 				await handleAuthStatus(globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
@@ -81,7 +81,7 @@ export function createAuthCommand(): Command {
 			try {
 				await handleAuthRemove(globalOpts);
 			} catch (error) {
-				handleError(error, globalOpts.debug);
+				handleError(error);
 			}
 		});
 
