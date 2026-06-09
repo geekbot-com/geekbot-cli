@@ -246,3 +246,28 @@ New to Geekbot, or not sure what's possible? Once it's set up, here are the kind
 **Team & profile**
 - *"Who's on my team?"*
 - *"Show my Geekbot profile."*
+
+## 🤝 Contributing
+
+Contributions are welcome! To get set up:
+
+```shell
+git clone https://github.com/geekbot-com/geekbot-cli.git
+cd geekbot-cli
+bun install
+bun test          # run the suite
+bun run check     # lint + format
+```
+
+Then:
+
+1. Fork the repo and create a feature branch (`git checkout -b my-feature`).
+2. Make your changes and add tests.
+3. Run `bun test` and `bun run check` to verify.
+4. Open a pull request against `main`.
+
+Found a bug or have an idea? [Open an issue](https://github.com/geekbot-com/geekbot-cli/issues).
+
+## 📄 License
+
+[MIT](LICENSE) © Geekbot
