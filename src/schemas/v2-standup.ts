@@ -37,3 +37,14 @@ export type V2Standup = z.output<typeof V2StandupSchema>;
 
 export const V2StandupListResponseSchema = v2ListEnvelope(V2StandupSchema);
 export const V2StandupItemResponseSchema = v2ItemEnvelope(V2StandupSchema);
+
+export const V2StandupParticipationSchema = z.object({
+	standup_id: z.number(),
+	is_poll: z.boolean(),
+	date: z.string(),
+	expected: z.number(),
+	responded: z.number(),
+	participation_rate: z.number(),
+	excluded: z.object({ vacation: z.number() }),
+});
+export const V2StandupParticipationResponseSchema = v2ListEnvelope(V2StandupParticipationSchema);

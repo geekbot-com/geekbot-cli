@@ -31,14 +31,19 @@ describe("createPollCommand", () => {
 		expect(cmd.name()).toBe("poll");
 	});
 
-	test("registers 4 subcommands", () => {
+	test("registers 5 subcommands", () => {
 		const cmd = createPollCommand();
-		expect(cmd.commands.length).toBe(4);
+		expect(cmd.commands.length).toBe(5);
 	});
 
 	test("registers 'list' subcommand", () => {
 		const cmd = createPollCommand();
 		expect(cmd.commands.find((c) => c.name() === "list")).toBeDefined();
+	});
+
+	test("registers 'participation' subcommand", () => {
+		const cmd = createPollCommand();
+		expect(cmd.commands.find((c) => c.name() === "participation")).toBeDefined();
 	});
 
 	test("registers 'get' subcommand", () => {

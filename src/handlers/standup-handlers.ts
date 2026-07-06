@@ -6,7 +6,11 @@ import type { HttpClient } from "../http/client.ts";
 import { idempotencyHeader } from "../http/idempotency.ts";
 import { success, successList } from "../output/envelope.ts";
 import { writeOutput } from "../output/formatter.ts";
-import { V2StandupItemResponseSchema, V2StandupListResponseSchema } from "../schemas/v2-standup.ts";
+import {
+	V2StandupItemResponseSchema,
+	V2StandupListResponseSchema,
+	V2StandupParticipationResponseSchema,
+} from "../schemas/v2-standup.ts";
 import { parseQuestionsInputV2, parseV2DateFilter } from "../utils/input-parsers.ts";
 import { buildReceipt } from "../utils/receipt.ts";
 import {
@@ -120,6 +124,44 @@ export async function handleStandupList(
 
 	const raw = await client.get<unknown>("/v2/standups", params);
 	const parsed = V2StandupListResponseSchema.parse(raw);
+
+	writeOutput(
+		successList(parsed.data, {
+			next_cursor: parsed.next_cursor,
+			has_more: parsed.has_more,
+		}),
+	);
+}
+
+export interface StandupParticipationOptions {
+	since?: string;
+	until?: string;
+	cursor?: string;
+	pageSize?: string;
+}
+
+/**
+ * Handle `geekbot standup participation` command.
+ * Fetches per-occurrence participation from GET /v2/standups/<id>/participation
+ * (cursor-paginated, single page per call).
+ */
+export async function handleStandupParticipation(
+	id: string,
+	options: StandupParticipationOptions,
+	globalOpts: GlobalOptions,
+): Promise<void> {
+	const numericId = validateNumericId(id, "standup ID");
+	const client = await createAuthenticatedClient(globalOpts);
+
+	const params = buildV2ListParams({
+		since: options.since ? parseV2DateFilter(options.since, "--since") : undefined,
+		until: options.until ? parseV2DateFilter(options.until, "--until") : undefined,
+		cursor: options.cursor,
+		limit: options.pageSize ? String(validateLimit(options.pageSize)) : undefined,
+	});
+
+	const raw = await client.get<unknown>(`/v2/standups/${numericId}/participation`, params);
+	const parsed = V2StandupParticipationResponseSchema.parse(raw);
 
 	writeOutput(
 		successList(parsed.data, {

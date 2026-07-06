@@ -84,3 +84,13 @@ export const V2PollVotesSchema = z.object({
 export type V2PollVotes = z.output<typeof V2PollVotesSchema>;
 
 export const V2PollVotesResponseSchema = v2ItemEnvelope(V2PollVotesSchema);
+
+export const V2PollParticipationSchema = z.object({
+	poll_id: z.number(),
+	is_poll: z.boolean(),
+	date: z.string(),
+	expected: z.number(),
+	responded: z.number(),
+	participation_rate: z.number(),
+});
+export const V2PollParticipationResponseSchema = v2ListEnvelope(V2PollParticipationSchema);

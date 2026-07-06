@@ -68,6 +68,31 @@ populated by `--include`).
 
 This is the primary way to discover question IDs for report submission.
 
+### standup participation
+
+Per-occurrence participation for a standup via `GET /v2/standups/<id>/participation`.
+Cursor-paginated, newest-first; each invocation returns one page.
+
+```bash
+geekbot standup participation 123
+geekbot standup participation 123 --since 2026-01-01 --until 2026-02-01
+geekbot standup participation 123 --page-size 50
+geekbot standup participation 123 --cursor "<token>"        # next page
+```
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--since <date>` | — | ISO 8601 or `YYYY-MM-DD` (inclusive lower bound) |
+| `--until <date>` | — | ISO 8601 or `YYYY-MM-DD` (exclusive upper bound) |
+| `--cursor <token>` | — | Opaque pagination cursor from a previous response |
+| `--page-size <n>` | `30` | Page size (1-100) |
+
+Returns: `data` is an array of per-occurrence entries, newest-first, with
+`metadata.next_cursor` / `metadata.has_more` for pagination. Each entry has
+`standup_id`, `date`, `expected` (members expected to respond — out-of-office /
+vacation members who did not report are excluded), `responded`,
+`participation_rate` (0-1), and `excluded.vacation`.
+
 ### standup create (v2)
 
 Create a new standup via `POST /v2/standups`. Only `--channel` and `--questions`
@@ -277,6 +302,29 @@ View voting results for a poll.
 geekbot poll votes 456
 geekbot poll votes 456 --after "2026-03-01" --before "2026-03-15"
 ```
+
+### poll participation
+
+Per-broadcast response rate for a poll via `GET /v2/polls/<id>/participation`.
+Cursor-paginated, newest-first. Slack teams only.
+
+```bash
+geekbot poll participation 456
+geekbot poll participation 456 --since 2026-01-01 --until 2026-02-01
+geekbot poll participation 456 --page-size 50
+```
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--since <date>` | — | ISO 8601 or `YYYY-MM-DD` (inclusive lower bound) |
+| `--until <date>` | — | ISO 8601 or `YYYY-MM-DD` (exclusive upper bound) |
+| `--cursor <token>` | — | Opaque pagination cursor from a previous response |
+| `--page-size <n>` | `30` | Page size (1-100) |
+
+Returns: `data` is an array of per-broadcast entries, newest-first. Each has
+`poll_id`, `date`, `expected` (recipients), `responded` (distinct voters), and
+`participation_rate` (0-1). A rate above 1.0 means more people voted than the
+poll's current members — a sign it needs syncing.
 
 ---
 

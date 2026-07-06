@@ -106,9 +106,9 @@ The CLI follows a `geekbot <resource> <action> [options]` pattern. Run `geekbot 
 
 | Resource | Actions | What it does |
 |----------|---------|--------------|
-| `standup` | `list` · `get <id>` · `create` · `start <id>` | List, inspect, create, or immediately trigger standups |
+| `standup` | `list` · `get <id>` · `participation <id>` · `create` · `start <id>` | List, inspect, create, trigger standups, or read participation |
 | `report` | `list` · `get <id>` · `create` · `edit <id>` · `delete <id>` | Read and submit standup reports |
-| `poll` | `list` · `get <id>` · `create` · `votes <id>` | Manage polls and read results *(Slack teams only)* |
+| `poll` | `list` · `get <id>` · `votes <id>` · `participation <id>` · `create` | Manage polls, read results and response rate *(Slack teams only)* |
 | `me` | `show` · `teams` | Show your profile or the teams you belong to |
 | `team` | `list` | List teams with their members |
 | `auth` | `login` · `setup` · `status` · `remove` | Manage authentication (see below) |
@@ -119,9 +119,11 @@ A few common examples:
 geekbot standup list
 geekbot standup create --name "Sprint Retro" --channel "#engineering" \
   --questions '["What went well?","What could improve?"]'
+geekbot standup participation 123 --since 2026-01-01 --until 2026-02-01
 geekbot report create --standup-id 123 --answers '{"101":"Shipped auth","102":"Writing tests"}'
 geekbot poll create --name "Lunch" --channel "#general" \
   --question "Where to?" --choices '["Pizza","Sushi","Tacos"]'
+geekbot poll participation 456
 ```
 
 ## 🔑 Authentication
