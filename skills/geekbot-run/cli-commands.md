@@ -8,9 +8,10 @@ JSON envelope: `{ ok, data, error, metadata }`. Always check `ok` first.
 1. [Standup commands](#standup)
 2. [Report commands](#report)
 3. [Poll commands](#poll)
-4. [Identity commands](#identity)
-5. [Auth commands](#auth)
-6. [Global options](#global-options)
+4. [Out-of-office commands](#out-of-office)
+5. [Identity commands](#identity)
+6. [Auth commands](#auth)
+7. [Global options](#global-options)
 
 ---
 
@@ -325,6 +326,111 @@ Returns: `data` is an array of per-broadcast entries, newest-first. Each has
 `poll_id`, `date`, `expected` (recipients), `responded` (distinct voters), and
 `participation_rate` (0-1). A rate above 1.0 means more people voted than the
 poll's current members — a sign it needs syncing.
+
+---
+
+## Out of office
+
+Out-of-office periods pause standup notifications for a user while they are
+away — the same periods a user sets by messaging `ooo` to the Geekbot bot.
+By default commands operate on the authenticated user; admins can manage
+another member's periods with `--user <id>` (Slack-style ID). All dates are
+`YYYY-MM-DD`; `end_date` is inclusive. Overlapping periods are allowed —
+each entry is independent.
+
+### ooo list
+
+List current and upcoming periods (past periods are not returned) via
+`GET /v2/ooo`. Cursor-paginated, ordered by start date.
+
+```bash
+geekbot ooo list                          # your own periods
+geekbot ooo list --user U08LXSA31BJ       # another member's (admin)
+geekbot ooo list --page-size 50           # larger page
+geekbot ooo list --cursor "<token>"       # next page
+```
+
+| Flag | Default | Notes |
+|------|---------|-------|
+| `--user <id>` | you | Slack-style user ID; admins listing another member |
+| `--cursor <token>` | — | Opaque pagination cursor from a previous response |
+| `--page-size <n>` | `25` | Page size (1-100) |
+
+Returns: `data` is an array of OOO period objects `{ id, user_id,
+start_date, end_date, days, timezone, created_at }`; `metadata.next_cursor`
+and `metadata.has_more` drive pagination.
+
+### ooo get
+
+Get a single period by ID via `GET /v2/ooo/{id}`.
+
+```bash
+geekbot ooo get 12
+geekbot ooo get 12 --user U08LXSA31BJ
+```
+
+| Flag | Notes |
+|------|-------|
+| `--user <id>` | Slack-style user ID; admins reading another member's period |
+
+### ooo create
+
+Create a period via `POST /v2/ooo`. Both dates are required.
+
+```bash
+geekbot ooo create --start-date "2026-08-01" --end-date "2026-08-15"
+
+# Admin: set OOO for another member
+geekbot ooo create --start-date "2026-08-01" --end-date "2026-08-15" \
+  --user U08LXSA31BJ
+```
+
+| Flag | Required | Notes |
+|------|----------|-------|
+| `--start-date <date>` | Yes | First day out (`YYYY-MM-DD`), must be <= end date |
+| `--end-date <date>` | Yes | Last day out (`YYYY-MM-DD`, inclusive), must not be in the past |
+| `--user <id>` | No | Slack-style user ID; admins creating for another member |
+
+**Idempotency:** same behavior as `standup create` — UUID auto-generated per
+call, 24h API window. Don't re-run on ambiguous outcomes; list first with
+`geekbot ooo list`.
+
+Returns: `data` is the created period. `metadata.undo` contains the matching
+`geekbot ooo delete <id> --yes` command.
+
+### ooo edit
+
+Change the dates of a period via `PATCH /v2/ooo/{id}`. At least one of the
+two date flags is required.
+
+```bash
+geekbot ooo edit 12 --end-date "2026-08-20"
+geekbot ooo edit 12 --start-date "2026-08-03" --end-date "2026-08-20"
+geekbot ooo edit 12 --end-date "2026-08-20" --user U08LXSA31BJ
+```
+
+| Flag | Required | Notes |
+|------|----------|-------|
+| `--start-date <date>` | No¹ | New first day out (`YYYY-MM-DD`) |
+| `--end-date <date>` | No¹ | New last day out (`YYYY-MM-DD`, inclusive) |
+| `--user <id>` | No | Slack-style user ID; admins editing another member's period |
+
+¹ At least one of `--start-date` / `--end-date` must be provided.
+
+### ooo delete
+
+Delete a period via `DELETE /v2/ooo/{id}`, resuming standup notifications
+for those dates. Requires `--yes` confirmation.
+
+```bash
+geekbot ooo delete 12 --yes
+geekbot ooo delete 12 --user U08LXSA31BJ --yes
+```
+
+| Flag | Notes |
+|------|-------|
+| `--user <id>` | Slack-style user ID; admins deleting another member's period |
+| `--yes` | Confirm deletion (required) |
 
 ---
 

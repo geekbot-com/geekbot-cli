@@ -97,6 +97,8 @@ Most common operations at a glance:
 | List reports | `geekbot report list --standup-id <id> --limit 10` |
 | Submit a report | `geekbot report create --standup-id <id> --answers '{"<qid>":"..."}'` |
 | My profile + user ID | `geekbot me show` |
+| Set out-of-office (pauses standups) | `geekbot ooo create --start-date "YYYY-MM-DD" --end-date "YYYY-MM-DD"` (admins add `--user <id>` for another member) |
+| List/adjust out-of-office periods | `geekbot ooo list`, `geekbot ooo edit <id> --end-date "..."`, `geekbot ooo delete <id> --yes` |
 | Create a poll (Slack only) | `geekbot poll create --name "..." --channel "..." --question "..." --choices '[...]' [--duration 120]` |
 | Search team members | `geekbot team search <query>` (matches username, realname, email) |
 | Check auth | `geekbot auth status` |
@@ -148,6 +150,9 @@ The same person can manage standups and submit reports in one conversation.
 - Context language: "what did I say last time", "carry over blockers",
   "my recent reports"
 - Identity queries: "what standups am I in", "show my profile"
+- Out-of-office language: "I'm on vacation", "out of office", "OOO",
+  "pause my standups while I'm away" — use the `geekbot ooo` commands
+  (managers can set OOO for a member with `--user <id>`)
 
 **When ambiguous**, ask one clarifying question — never more than one.
 Use `[PICKER]` if the disambiguation is between 2–4 named options
