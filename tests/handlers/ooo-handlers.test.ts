@@ -88,13 +88,26 @@ describe("handleOooList", () => {
 		});
 	});
 
-	test("maps --include-past to include_past=true and omits it by default", async () => {
-		await handleOooList({ includePast: true }, defaultGlobalOpts);
-		expect(mockGet).toHaveBeenCalledWith("/v2/ooo", { include_past: "true" });
+	test("maps --after/--before to since/until and omits them by default", async () => {
+		await handleOooList({ after: "2026-01-01", before: "2026-07-01" }, defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/ooo", {
+			since: "2026-01-01",
+			until: "2026-07-01",
+		});
 
 		mockGet.mockClear();
-		await handleOooList({ includePast: false }, defaultGlobalOpts);
+		await handleOooList({}, defaultGlobalOpts);
 		expect(mockGet).toHaveBeenCalledWith("/v2/ooo", undefined);
+	});
+
+	test("rejects invalid --after/--before dates before any request", async () => {
+		await expect(handleOooList({ after: "not-a-date" }, defaultGlobalOpts)).rejects.toThrow(
+			/Invalid date for --after/,
+		);
+		await expect(handleOooList({ before: "2026-02-31" }, defaultGlobalOpts)).rejects.toThrow(
+			/Invalid date for --before/,
+		);
+		expect(mockGet).not.toHaveBeenCalled();
 	});
 
 	test("rejects invalid --user value", async () => {
@@ -129,25 +142,17 @@ describe("handleOooList", () => {
 describe("handleOooGet", () => {
 	beforeEach(resetMocks);
 
-	test("GET /v2/ooo/{id} with no params by default", async () => {
+	test("GET /v2/ooo/{id} by id, no query params", async () => {
 		mockGet.mockImplementation(() => Promise.resolve({ data: sampleOooPeriod }));
-		await handleOooGet("12", {}, defaultGlobalOpts);
-		expect(mockGet).toHaveBeenCalledWith("/v2/ooo/12", undefined);
+		await handleOooGet("12", defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/ooo/12");
 		const envelope = mockWriteOutput.mock.calls[0]?.[0] as { ok: boolean; data: { id: number } };
 		expect(envelope.ok).toBe(true);
 		expect(envelope.data.id).toBe(12);
 	});
 
-	test("passes --user through as user_id query param", async () => {
-		mockGet.mockImplementation(() => Promise.resolve({ data: sampleOooPeriod }));
-		await handleOooGet("12", { user: "U08LXSA31BJ" }, defaultGlobalOpts);
-		expect(mockGet).toHaveBeenCalledWith("/v2/ooo/12", { user_id: "U08LXSA31BJ" });
-	});
-
 	test("rejects non-numeric id", async () => {
-		await expect(handleOooGet("abc", {}, defaultGlobalOpts)).rejects.toThrow(
-			/Invalid OOO period ID/,
-		);
+		await expect(handleOooGet("abc", defaultGlobalOpts)).rejects.toThrow(/Invalid OOO period ID/);
 		expect(mockGet).not.toHaveBeenCalled();
 	});
 });
@@ -181,7 +186,7 @@ describe("handleOooCreate", () => {
 		expect(envelope.metadata.undo).toBe("geekbot ooo delete 12 --yes");
 	});
 
-	test("undo command includes --user when creating for another member", async () => {
+	test("undo command is by-id even when creating for another member", async () => {
 		await handleOooCreate(
 			{ startDate: "2026-08-01", endDate: "2026-08-15", user: "U08LXSA31BJ" },
 			defaultGlobalOpts,
@@ -189,7 +194,7 @@ describe("handleOooCreate", () => {
 		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
 			metadata: { undo: string | null };
 		};
-		expect(envelope.metadata.undo).toBe("geekbot ooo delete 12 --user U08LXSA31BJ --yes");
+		expect(envelope.metadata.undo).toBe("geekbot ooo delete 12 --yes");
 	});
 
 	test("rejects non-YYYY-MM-DD start date", async () => {
@@ -228,12 +233,6 @@ describe("handleOooEdit", () => {
 		expect(body).toEqual({ end_date: "2026-08-20" });
 	});
 
-	test("includes user_id in body when --user given", async () => {
-		await handleOooEdit("12", { endDate: "2026-08-20", user: "U08LXSA31BJ" }, defaultGlobalOpts);
-		const [, body] = mockPatch.mock.calls[0] as [string, Record<string, unknown>];
-		expect(body).toEqual({ end_date: "2026-08-20", user_id: "U08LXSA31BJ" });
-	});
-
 	test("rejects edit with neither --start-date nor --end-date", async () => {
 		await expect(handleOooEdit("12", {}, defaultGlobalOpts)).rejects.toThrow(
 			/At least one of --start-date or --end-date is required/,
@@ -259,12 +258,6 @@ describe("handleOooDelete", () => {
 		const call = mockDelete.mock.calls[0] as [string, Record<string, string>];
 		expect(call[0]).toBe("/v2/ooo/12");
 		expect(call[1]["Idempotency-Key"]).toMatch(UUID_RE);
-	});
-
-	test("appends user_id query param when --user given", async () => {
-		await handleOooDelete("12", { user: "U08LXSA31BJ", yes: true }, defaultGlobalOpts);
-		const call = mockDelete.mock.calls[0] as [string, Record<string, string>];
-		expect(call[0]).toBe("/v2/ooo/12?user_id=U08LXSA31BJ");
 	});
 
 	test("refuses to delete without --yes", async () => {

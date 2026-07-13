@@ -86,7 +86,10 @@ describe("createOooCommand", () => {
 				"opaque",
 				"--page-size",
 				"50",
-				"--include-past",
+				"--after",
+				"2026-01-01",
+				"--before",
+				"2026-07-01",
 				"--api-key",
 				"test",
 			],
@@ -97,24 +100,21 @@ describe("createOooCommand", () => {
 				user: "U08LXSA31BJ",
 				cursor: "opaque",
 				pageSize: "50",
-				includePast: true,
+				after: "2026-01-01",
+				before: "2026-07-01",
 			}),
 			expect.anything(),
 		);
 	});
 
-	test("get subcommand calls handleOooGet with id and options", async () => {
+	test("get subcommand calls handleOooGet with the id", async () => {
 		const program = new Command();
 		addGlobalOptions(program);
 		program.addCommand(createOooCommand());
-		await program.parseAsync(["ooo", "get", "12", "--user", "U123", "--api-key", "test"], {
+		await program.parseAsync(["ooo", "get", "12", "--api-key", "test"], {
 			from: "user",
 		});
-		expect(mockHandlers.handleOooGet).toHaveBeenCalledWith(
-			"12",
-			expect.objectContaining({ user: "U123" }),
-			expect.anything(),
-		);
+		expect(mockHandlers.handleOooGet).toHaveBeenCalledWith("12", expect.anything());
 	});
 
 	test("create subcommand calls handleOooCreate with mapped options", async () => {
@@ -214,13 +214,12 @@ describe("createOooCommand", () => {
 		const program = new Command();
 		addGlobalOptions(program);
 		program.addCommand(createOooCommand());
-		await program.parseAsync(
-			["ooo", "delete", "12", "--user", "U123", "--yes", "--api-key", "test"],
-			{ from: "user" },
-		);
+		await program.parseAsync(["ooo", "delete", "12", "--yes", "--api-key", "test"], {
+			from: "user",
+		});
 		expect(mockHandlers.handleOooDelete).toHaveBeenCalledWith(
 			"12",
-			expect.objectContaining({ user: "U123", yes: true }),
+			expect.objectContaining({ yes: true }),
 			expect.anything(),
 		);
 	});

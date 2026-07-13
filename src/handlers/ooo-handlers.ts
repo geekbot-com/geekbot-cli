@@ -6,7 +6,7 @@ import { idempotencyHeader } from "../http/idempotency.ts";
 import { success, successList } from "../output/envelope.ts";
 import { writeOutput } from "../output/formatter.ts";
 import { V2OooItemResponseSchema, V2OooListResponseSchema } from "../schemas/v2-ooo.ts";
-import { parseDateFilter } from "../utils/input-parsers.ts";
+import { parseDateFilter, parseV2DateFilter } from "../utils/input-parsers.ts";
 import { buildReceipt } from "../utils/receipt.ts";
 import { validateLimit, validateNumericId, validateSlackId } from "../utils/validation.ts";
 
@@ -16,11 +16,8 @@ export interface OooListOptions {
 	user?: string;
 	cursor?: string;
 	pageSize?: string;
-	includePast?: boolean;
-}
-
-export interface OooGetOptions {
-	user?: string;
+	after?: string;
+	before?: string;
 }
 
 export interface OooCreateOptions {
@@ -32,11 +29,9 @@ export interface OooCreateOptions {
 export interface OooEditOptions {
 	startDate?: string;
 	endDate?: string;
-	user?: string;
 }
 
 export interface OooDeleteOptions {
-	user?: string;
 	yes?: boolean;
 }
 
@@ -79,7 +74,8 @@ function buildParams(
 /**
  * Handle `geekbot ooo list` command.
  * Fetches out-of-office periods from GET /v2/ooo (cursor-paginated, single
- * page per call). Only current and upcoming periods are returned by the API.
+ * page per call). Without a date window the API returns current and upcoming
+ * periods; `--after`/`--before` map to v2 `since`/`until` like `report list`.
  */
 export async function handleOooList(
 	options: OooListOptions,
@@ -91,7 +87,8 @@ export async function handleOooList(
 		user_id: options.user ? validateSlackId(options.user, "user ID") : undefined,
 		cursor: options.cursor,
 		limit: options.pageSize ? String(validateLimit(options.pageSize)) : undefined,
-		include_past: options.includePast === true ? "true" : undefined,
+		since: options.after ? parseV2DateFilter(options.after, "--after") : undefined,
+		until: options.before ? parseV2DateFilter(options.before, "--before") : undefined,
 	});
 
 	const raw = await client.get<unknown>("/v2/ooo", params);
@@ -109,19 +106,11 @@ export async function handleOooList(
  * Handle `geekbot ooo get` command.
  * Fetches a single out-of-office period via GET /v2/ooo/{id}.
  */
-export async function handleOooGet(
-	id: string,
-	options: OooGetOptions,
-	globalOpts: GlobalOptions,
-): Promise<void> {
+export async function handleOooGet(id: string, globalOpts: GlobalOptions): Promise<void> {
 	const client = await createAuthenticatedClient(globalOpts);
 	const numericId = validateNumericId(id, "OOO period ID");
 
-	const params = buildParams({
-		user_id: options.user ? validateSlackId(options.user, "user ID") : undefined,
-	});
-
-	const raw = await client.get<unknown>(`/v2/ooo/${numericId}`, params);
+	const raw = await client.get<unknown>(`/v2/ooo/${numericId}`);
 	const parsed = V2OooItemResponseSchema.parse(raw);
 	writeOutput(success(parsed.data));
 }
@@ -148,8 +137,7 @@ export async function handleOooCreate(
 
 	const raw = await client.post<unknown>("/v2/ooo", body, idempotencyHeader());
 	const parsed = V2OooItemResponseSchema.parse(raw);
-	const undoUser = options.user !== undefined ? ` --user ${options.user}` : "";
-	const receipt = buildReceipt("created", `geekbot ooo delete ${parsed.data.id}${undoUser} --yes`);
+	const receipt = buildReceipt("created", `geekbot ooo delete ${parsed.data.id} --yes`);
 
 	writeOutput(success(parsed.data, receipt));
 }
@@ -185,9 +173,6 @@ export async function handleOooEdit(
 	if (options.endDate !== undefined) {
 		body.end_date = validateOooDate(options.endDate, "--end-date");
 	}
-	if (options.user !== undefined) {
-		body.user_id = validateSlackId(options.user, "user ID");
-	}
 
 	const raw = await client.patch<unknown>(`/v2/ooo/${numericId}`, body, idempotencyHeader());
 	const parsed = V2OooItemResponseSchema.parse(raw);
@@ -199,8 +184,7 @@ export async function handleOooEdit(
 /**
  * Handle `geekbot ooo delete` command.
  * Deletes an out-of-office period via DELETE /v2/ooo/{id}. Requires `--yes`
- * confirmation. The optional `user_id` query param is appended to the path
- * because HttpClient.delete does not accept query params.
+ * confirmation.
  */
 export async function handleOooDelete(
 	id: string,
@@ -219,13 +203,8 @@ export async function handleOooDelete(
 		);
 	}
 
-	let path = `/v2/ooo/${numericId}`;
-	if (options.user !== undefined) {
-		path += `?user_id=${validateSlackId(options.user, "user ID")}`;
-	}
-
 	const client = await createAuthenticatedClient(globalOpts);
-	await client.delete(path, idempotencyHeader());
+	await client.delete(`/v2/ooo/${numericId}`, idempotencyHeader());
 	const receipt = buildReceipt("deleted", null);
 	writeOutput(success({ id: numericId }, receipt));
 }

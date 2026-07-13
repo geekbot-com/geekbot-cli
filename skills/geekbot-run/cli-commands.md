@@ -341,12 +341,15 @@ each entry is independent.
 ### ooo list
 
 List out-of-office periods via `GET /v2/ooo`. By default only current and
-upcoming periods are returned; pass `--include-past` for the full history.
-Cursor-paginated, ordered by start date.
+upcoming periods are returned; `--after`/`--before` bound the date window
+like `report list` (a period matches when it overlaps the window), so an
+`--after` in the past retrieves historical periods. Cursor-paginated,
+ordered by start date.
 
 ```bash
 geekbot ooo list                          # your own current + upcoming periods
-geekbot ooo list --include-past           # full history, past periods included
+geekbot ooo list --after 2026-01-01       # history since Jan 1 (plus upcoming)
+geekbot ooo list --after 2026-01-01 --before 2026-07-01   # bounded window
 geekbot ooo list --user U08LXSA31BJ       # another member's
 geekbot ooo list --page-size 50           # larger page
 geekbot ooo list --cursor "<token>"       # next page
@@ -355,7 +358,8 @@ geekbot ooo list --cursor "<token>"       # next page
 | Flag | Default | Notes |
 |------|---------|-------|
 | `--user <id>` | you | Slack-style user ID; admins can list anyone, members can list teammates they share an active standup with |
-| `--include-past` | off | Include periods that have already ended |
+| `--after <date>` | now | Only periods ending on/after this date (v2 `since`, inclusive) — set a past date for history |
+| `--before <date>` | — | Only periods starting before this date (v2 `until`, exclusive) |
 | `--cursor <token>` | — | Opaque pagination cursor from a previous response |
 | `--page-size <n>` | `25` | Page size (1-100) |
 
@@ -369,12 +373,7 @@ Get a single period by ID via `GET /v2/ooo/{id}`.
 
 ```bash
 geekbot ooo get 12
-geekbot ooo get 12 --user U08LXSA31BJ
 ```
-
-| Flag | Notes |
-|------|-------|
-| `--user <id>` | Slack-style user ID; admins reading another member's period |
 
 ### ooo create
 
@@ -409,14 +408,12 @@ two date flags is required.
 ```bash
 geekbot ooo edit 12 --end-date "2026-08-20"
 geekbot ooo edit 12 --start-date "2026-08-03" --end-date "2026-08-20"
-geekbot ooo edit 12 --end-date "2026-08-20" --user U08LXSA31BJ
 ```
 
 | Flag | Required | Notes |
 |------|----------|-------|
 | `--start-date <date>` | No¹ | New first day out (`YYYY-MM-DD`) |
 | `--end-date <date>` | No¹ | New last day out (`YYYY-MM-DD`, inclusive) |
-| `--user <id>` | No | Slack-style user ID; admins editing another member's period |
 
 ¹ At least one of `--start-date` / `--end-date` must be provided.
 
@@ -427,12 +424,10 @@ for those dates. Requires `--yes` confirmation.
 
 ```bash
 geekbot ooo delete 12 --yes
-geekbot ooo delete 12 --user U08LXSA31BJ --yes
 ```
 
 | Flag | Notes |
 |------|-------|
-| `--user <id>` | Slack-style user ID; admins deleting another member's period |
 | `--yes` | Confirm deletion (required) |
 
 ---
