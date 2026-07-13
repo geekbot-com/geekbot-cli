@@ -16,6 +16,7 @@ export interface OooListOptions {
 	user?: string;
 	cursor?: string;
 	pageSize?: string;
+	includePast?: boolean;
 }
 
 export interface OooGetOptions {
@@ -90,6 +91,7 @@ export async function handleOooList(
 		user_id: options.user ? validateSlackId(options.user, "user ID") : undefined,
 		cursor: options.cursor,
 		limit: options.pageSize ? String(validateLimit(options.pageSize)) : undefined,
+		include_past: options.includePast === true ? "true" : undefined,
 	});
 
 	const raw = await client.get<unknown>("/v2/ooo", params);

@@ -340,19 +340,22 @@ each entry is independent.
 
 ### ooo list
 
-List current and upcoming periods (past periods are not returned) via
-`GET /v2/ooo`. Cursor-paginated, ordered by start date.
+List out-of-office periods via `GET /v2/ooo`. By default only current and
+upcoming periods are returned; pass `--include-past` for the full history.
+Cursor-paginated, ordered by start date.
 
 ```bash
-geekbot ooo list                          # your own periods
-geekbot ooo list --user U08LXSA31BJ       # another member's (admin)
+geekbot ooo list                          # your own current + upcoming periods
+geekbot ooo list --include-past           # full history, past periods included
+geekbot ooo list --user U08LXSA31BJ       # another member's
 geekbot ooo list --page-size 50           # larger page
 geekbot ooo list --cursor "<token>"       # next page
 ```
 
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--user <id>` | you | Slack-style user ID; admins listing another member |
+| `--user <id>` | you | Slack-style user ID; admins can list anyone, members can list teammates they share an active standup with |
+| `--include-past` | off | Include periods that have already ended |
 | `--cursor <token>` | — | Opaque pagination cursor from a previous response |
 | `--page-size <n>` | `25` | Page size (1-100) |
 

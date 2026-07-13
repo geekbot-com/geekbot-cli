@@ -86,6 +86,7 @@ describe("createOooCommand", () => {
 				"opaque",
 				"--page-size",
 				"50",
+				"--include-past",
 				"--api-key",
 				"test",
 			],
@@ -96,6 +97,7 @@ describe("createOooCommand", () => {
 				user: "U08LXSA31BJ",
 				cursor: "opaque",
 				pageSize: "50",
+				includePast: true,
 			}),
 			expect.anything(),
 		);

@@ -88,6 +88,15 @@ describe("handleOooList", () => {
 		});
 	});
 
+	test("maps --include-past to include_past=true and omits it by default", async () => {
+		await handleOooList({ includePast: true }, defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/ooo", { include_past: "true" });
+
+		mockGet.mockClear();
+		await handleOooList({ includePast: false }, defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/ooo", undefined);
+	});
+
 	test("rejects invalid --user value", async () => {
 		await expect(handleOooList({ user: "not-a-slack-id" }, defaultGlobalOpts)).rejects.toThrow(
 			/Invalid user ID/,

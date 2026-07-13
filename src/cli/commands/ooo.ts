@@ -20,9 +20,13 @@ export function createOooCommand(): Command {
 		.option("--user <id>", "Slack-style user ID (admins listing another member, e.g. U123)")
 		.option("--cursor <token>", "Opaque pagination cursor from a previous response")
 		.option("--page-size <n>", "Page size (1-100, default 25)")
+		.option(
+			"--include-past",
+			"Include periods that have already ended (default: current + upcoming only)",
+		)
 		.addHelpText(
 			"after",
-			'\nExamples:\n  geekbot ooo list\n  geekbot ooo list --user U08LXSA31BJ\n  geekbot ooo list --page-size 50\n  geekbot ooo list --cursor "<token>"',
+			'\nExamples:\n  geekbot ooo list\n  geekbot ooo list --user U08LXSA31BJ\n  geekbot ooo list --include-past\n  geekbot ooo list --page-size 50\n  geekbot ooo list --cursor "<token>"',
 		)
 		.action(async function (this: Command) {
 			const globalOpts = getGlobalOptions(this);
@@ -33,6 +37,7 @@ export function createOooCommand(): Command {
 						user: opts.user,
 						cursor: opts.cursor,
 						pageSize: opts.pageSize,
+						includePast: opts.includePast,
 					},
 					globalOpts,
 				);
