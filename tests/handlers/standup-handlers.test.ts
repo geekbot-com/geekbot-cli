@@ -98,8 +98,13 @@ mock.module("../../src/errors/not-found-helper.ts", () => ({
 }));
 
 // Import handlers AFTER mocks are set up
-const { handleStandupList, handleStandupGet, handleStandupCreate, handleStandupStart } =
-	await import("../../src/handlers/standup-handlers.ts");
+const {
+	handleStandupList,
+	handleStandupGet,
+	handleStandupCreate,
+	handleStandupStart,
+	handleStandupParticipation,
+} = await import("../../src/handlers/standup-handlers.ts");
 
 const { CliError } = await import("../../src/errors/cli-error.ts");
 
@@ -419,5 +424,58 @@ describe("404 suggestion enrichment", () => {
 		}
 
 		expect(mockBuildNotFoundSuggestion).not.toHaveBeenCalled();
+	});
+});
+
+// ── handleStandupParticipation (v2) ──────────────────────────────────
+
+describe("handleStandupParticipation", () => {
+	const PART = {
+		data: [
+			{
+				standup_id: 42,
+				is_poll: false,
+				date: "2026-04-27",
+				expected: 5,
+				responded: 4,
+				participation_rate: 0.8,
+				excluded: { vacation: 1 },
+			},
+		],
+		next_cursor: null,
+		has_more: false,
+	};
+
+	test("calls the v2 participation endpoint with mapped params", async () => {
+		mockGet.mockImplementation(() => Promise.resolve(PART));
+		await handleStandupParticipation(
+			"42",
+			{ since: "2026-01-01", until: "2026-02-01", cursor: "C2", pageSize: "30" },
+			GLOBAL_OPTS,
+		);
+		expect(mockGet).toHaveBeenCalledWith("/v2/standups/42/participation", {
+			since: "2026-01-01",
+			until: "2026-02-01",
+			cursor: "C2",
+			limit: "30",
+		});
+	});
+
+	test("no params yields an undefined query and surfaces pagination metadata", async () => {
+		mockGet.mockImplementation(() => Promise.resolve(PART));
+		await handleStandupParticipation("42", {}, GLOBAL_OPTS);
+		expect(mockGet).toHaveBeenCalledWith("/v2/standups/42/participation", undefined);
+		const envelope = mockWriteOutput.mock.calls[0]?.[0] as {
+			data: Array<{ participation_rate: number }>;
+			metadata: Record<string, unknown>;
+		};
+		expect(envelope.data[0]?.participation_rate).toBe(0.8);
+		expect(envelope.metadata.has_more).toBe(false);
+	});
+
+	test("throws validation error for a non-numeric ID", async () => {
+		await expect(handleStandupParticipation("abc", {}, GLOBAL_OPTS)).rejects.toBeInstanceOf(
+			CliError,
+		);
 	});
 });

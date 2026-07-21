@@ -10,6 +10,7 @@ import { writeOutput } from "../output/formatter.ts";
 import {
 	V2PollItemResponseSchema,
 	V2PollListResponseSchema,
+	V2PollParticipationResponseSchema,
 	V2PollVotesResponseSchema,
 } from "../schemas/v2-poll.ts";
 import { parseChoicesInput, parseV2DateFilter } from "../utils/input-parsers.ts";
@@ -44,6 +45,13 @@ export interface PollCreateOptions {
 export interface PollVotesOptions {
 	after?: string;
 	before?: string;
+}
+
+export interface PollParticipationOptions {
+	since?: string;
+	until?: string;
+	cursor?: string;
+	pageSize?: string;
 }
 
 // ── Platform Error Helper ─────────────────────────────────────────────
@@ -249,6 +257,40 @@ export async function handlePollVotes(
 			const parsed = V2PollVotesResponseSchema.parse(raw);
 
 			writeOutput(success(parsed.data));
+		}, globalOpts);
+	});
+}
+
+/**
+ * Handle `geekbot poll participation` command.
+ * Fetches per-broadcast participation from GET /v2/polls/<id>/participation
+ * (cursor-paginated, single page per call).
+ */
+export async function handlePollParticipation(
+	id: string,
+	options: PollParticipationOptions,
+	globalOpts: GlobalOptions,
+): Promise<void> {
+	const numericId = validateNumericId(id, "poll ID");
+
+	await wrapPlatformError(async () => {
+		await enrichPollNotFound(async (client) => {
+			const params = buildParams({
+				since: options.since ? parseV2DateFilter(options.since, "--since") : undefined,
+				until: options.until ? parseV2DateFilter(options.until, "--until") : undefined,
+				cursor: options.cursor,
+				limit: options.pageSize ? String(validateLimit(options.pageSize)) : undefined,
+			});
+
+			const raw = await client.get<unknown>(`/v2/polls/${numericId}/participation`, params);
+			const parsed = V2PollParticipationResponseSchema.parse(raw);
+
+			writeOutput(
+				successList(parsed.data, {
+					next_cursor: parsed.next_cursor,
+					has_more: parsed.has_more,
+				}),
+			);
 		}, globalOpts);
 	});
 }

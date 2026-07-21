@@ -123,9 +123,13 @@ mock.module("../../src/errors/not-found-helper.ts", () => ({
 	buildNotFoundSuggestion: mockBuildNotFoundSuggestion,
 }));
 
-const { handlePollList, handlePollGet, handlePollCreate, handlePollVotes } = await import(
-	"../../src/handlers/poll-handlers.ts"
-);
+const {
+	handlePollList,
+	handlePollGet,
+	handlePollCreate,
+	handlePollVotes,
+	handlePollParticipation,
+} = await import("../../src/handlers/poll-handlers.ts");
 
 const { CliError } = await import("../../src/errors/cli-error.ts");
 
@@ -339,6 +343,55 @@ describe("handlePollVotes", () => {
 		mockGet.mockImplementation(() => Promise.reject(notFoundError));
 
 		await expect(handlePollVotes("99999", {}, GLOBAL_OPTS)).rejects.toMatchObject({
+			code: "poll_not_found",
+		});
+	});
+});
+
+describe("handlePollParticipation", () => {
+	const PART = {
+		data: [
+			{
+				poll_id: 456,
+				is_poll: true,
+				date: "2026-04-06",
+				expected: 8,
+				responded: 5,
+				participation_rate: 0.625,
+			},
+		],
+		next_cursor: null,
+		has_more: false,
+	};
+
+	test("calls the v2 participation endpoint with mapped params", async () => {
+		mockGet.mockImplementation(() => Promise.resolve(PART));
+		await handlePollParticipation(
+			"456",
+			{ since: "2026-01-01", until: "2026-02-01", cursor: "C2", pageSize: "30" },
+			GLOBAL_OPTS,
+		);
+		expect(mockGet).toHaveBeenCalledWith("/v2/polls/456/participation", {
+			since: "2026-01-01",
+			until: "2026-02-01",
+			cursor: "C2",
+			limit: "30",
+		});
+	});
+
+	test("no params yields an undefined query", async () => {
+		mockGet.mockImplementation(() => Promise.resolve(PART));
+		await handlePollParticipation("456", {}, GLOBAL_OPTS);
+		expect(mockGet).toHaveBeenCalledWith("/v2/polls/456/participation", undefined);
+	});
+
+	test("enriches 404 from the participation path with poll_not_found", async () => {
+		const notFoundError = new CliError("Not found", "not_found", 3, false, undefined, {
+			path: "/v2/polls/99999/participation",
+			status: 404,
+		});
+		mockGet.mockImplementation(() => Promise.reject(notFoundError));
+		await expect(handlePollParticipation("99999", {}, GLOBAL_OPTS)).rejects.toMatchObject({
 			code: "poll_not_found",
 		});
 	});

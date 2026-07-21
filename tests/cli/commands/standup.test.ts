@@ -31,14 +31,19 @@ describe("createStandupCommand", () => {
 		expect(cmd.name()).toBe("standup");
 	});
 
-	test("registers 4 subcommands", () => {
+	test("registers 5 subcommands", () => {
 		const cmd = createStandupCommand();
-		expect(cmd.commands.length).toBe(4);
+		expect(cmd.commands.length).toBe(5);
 	});
 
 	test("registers 'list' subcommand", () => {
 		const cmd = createStandupCommand();
 		expect(cmd.commands.find((c) => c.name() === "list")).toBeDefined();
+	});
+
+	test("registers 'participation' subcommand", () => {
+		const cmd = createStandupCommand();
+		expect(cmd.commands.find((c) => c.name() === "participation")).toBeDefined();
 	});
 
 	test("registers 'get' subcommand", () => {
