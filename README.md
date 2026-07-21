@@ -300,6 +300,8 @@ Then:
 
 Found a bug or have an idea? [Open an issue](https://github.com/geekbot-com/geekbot-cli/issues).
 
+Maintainers: see [RELEASING.md](RELEASING.md) for how the npm CLI and the agent plugin are versioned and published — they're two separate release lines.
+
 ## 📄 License
 
 [MIT](LICENSE) © Geekbot

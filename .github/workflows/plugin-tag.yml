@@ -1,0 +1,60 @@
+name: Tag plugin release
+
+# When the plugin version in .claude-plugin/plugin.json changes on `main`,
+# publish a `geekbot--v<version>` git tag.
+#
+# Claude Code resolves plugin versions by listing `<plugin>--v*` tags and
+# picking the highest, so this tag is what makes a new version discoverable
+# to clients. (Codex tracks the `main` ref directly and needs no tag — it
+# picks the change up on `codex plugin marketplace upgrade`.)
+#
+# The job is idempotent: if the tag already exists it does nothing, so a
+# commit that touches plugin.json without bumping the version is a no-op.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .claude-plugin/plugin.json
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Resolve plugin version
+        id: v
+        run: |
+          version=$(jq -r '.version' .claude-plugin/plugin.json)
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "::error::No .version in .claude-plugin/plugin.json"; exit 1
+          fi
+
+          # Mirror `claude plugin tag`: plugin.json and the marketplace
+          # metadata must agree on the version.
+          mkt=$(jq -r '.metadata.version' .claude-plugin/marketplace.json)
+          if [ "$mkt" != "$version" ]; then
+            echo "::error::Version mismatch — plugin.json=$version but marketplace.json metadata.version=$mkt. Bump both."; exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=geekbot--v${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag (idempotent)
+        run: |
+          tag="${{ steps.v.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists on origin — nothing to do."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "geekbot ${{ steps.v.outputs.version }}"
+          git push origin "refs/tags/${tag}"
+          echo "Published ${tag}."
