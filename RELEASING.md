@@ -2,12 +2,12 @@
 
 This repo ships **two independent artifacts** with **separate version lines**. Know which one you're releasing.
 
-| Artifact | What it is | Version file | Git tag | Published by |
-|----------|-----------|--------------|---------|--------------|
-| **npm CLI** (`geekbot-cli`) | the `geekbot` binary users install with `npm i -g` | `package.json` | `v<x.y.z>` | `.github/workflows/publish.yml` |
-| **Agent plugin** (`geekbot`) | the Claude Code / Codex plugin (slash commands + skills) | `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `plugins/geekbot/.codex-plugin/plugin.json` | `geekbot--v<x.y.z>` | `.github/workflows/plugin-tag.yml` |
+| Artifact | What it is | Version file(s) | Released by |
+|----------|-----------|-----------------|-------------|
+| **npm CLI** (`geekbot-cli`) | the `geekbot` binary users install with `npm i -g` | `package.json` | GitHub Release → `.github/workflows/publish.yml` → `npm publish` |
+| **Agent plugin** (`geekbot`) | the Claude Code / Codex plugin (slash commands + skills) | `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `plugins/geekbot/.codex-plugin/plugin.json` | **merge to `main`** (no separate publish step) |
 
-The two versions move at their own cadence — a CLI code change bumps the npm version; a skill/README change bumps the plugin version. When a single change touches both, one commit ends up carrying both a `v*` and a `geekbot--v*` tag. That's expected; the tag prefixes keep the two release lines unambiguous.
+The two versions move at their own cadence — a CLI code change bumps the npm version; a skill/README change bumps the plugin version.
 
 ---
 
@@ -22,40 +22,31 @@ The two versions move at their own cadence — a CLI code change bumps the npm v
 
 ## Releasing the agent plugin
 
+**There is no publish step and no tag to cut** — clients track this repo's default branch (`main`) and read the version straight from the manifests. Releasing is just merging:
+
 1. Bump the version in **all three** manifests (keep them identical):
    - `.claude-plugin/plugin.json` → `version`
    - `.claude-plugin/marketplace.json` → `metadata.version`
    - `plugins/geekbot/.codex-plugin/plugin.json` → `version`
-2. Merge to `main`.
-3. `plugin-tag.yml` detects the `.claude-plugin/plugin.json` change, verifies the manifests agree, and pushes a `geekbot--v<version>` tag automatically. **No local tagging.**
+2. Open a PR, merge to `main`.
 
-That's it — no separate publish step. Clients pull from the repo (see below).
-
-> The workflow is idempotent: if `geekbot--v<version>` already exists it's a no-op, so re-merges or non-version edits to `plugin.json` do nothing.
-
-### Cutting the tag manually (fallback)
-
-If you ever need to tag by hand — e.g. the workflow is disabled — it's just a git tag. The `claude` CLI wraps it with manifest validation:
-
-```shell
-claude plugin tag --push          # creates + pushes geekbot--v<version> from the manifests
-# equivalent to:
-git tag -a geekbot--v0.2.0 -m "geekbot 0.2.0" && git push origin refs/tags/geekbot--v0.2.0
-```
-
-Nothing is sent to Anthropic — the tag lives in this GitHub repo; clients read it when they sync the marketplace.
+That's it. The next time a client refreshes its marketplace, it pulls `main` and sees the new version.
 
 ---
 
 ## How clients get an update
 
-Updates are **pull-based** — nobody can push a plugin update to users. How they resolve the new version differs by tool:
+Updates are **pull-based** — nobody can push a plugin update to users. Both supported tools resolve the version the **same way**: they track a git **ref** (this repo's default branch, `main`) and read the plugin manifest from its HEAD. So a merge to `main` *is* the release for both.
 
-| Tool | Resolves version by | Picks up a release when… | User refreshes with |
-|------|---------------------|--------------------------|---------------------|
-| **Claude Code** | listing `geekbot--v*` **tags**, highest wins | the **tag** is pushed | `/plugin marketplace update geekbot-cli` + `/reload-plugins` |
-| **Codex** | fetching the marketplace **ref** (default `main`) | the change is **merged to `main`** | `codex plugin marketplace upgrade geekbot-cli` + `codex plugin add geekbot@geekbot-cli` |
+| Tool | Tracks | Picks up a release when… | User refreshes with |
+|------|--------|--------------------------|---------------------|
+| **Claude Code** | the marketplace's default branch (`main`) | the change is **merged to `main`** | `/plugin marketplace update geekbot-cli` + `/reload-plugins` |
+| **Codex** | the marketplace ref (default `main`) | the change is **merged to `main`** | `codex plugin marketplace upgrade geekbot-cli` + `codex plugin add geekbot@geekbot-cli` |
 
-So Claude Code needs the tag; Codex only needs the merge. `plugin-tag.yml` covers the Claude Code side automatically, and merging to `main` covers Codex. End-user refresh commands also live in the README's *Keeping Geekbot up to date* section.
+Auto-update is **off by default** for third-party marketplaces, so most users won't see a new version until they run the refresh command (or opt into auto-update). End-user refresh commands also live in the README's *Keeping Geekbot up to date* section.
 
-Auto-update is **off by default** for third-party marketplaces, so most users won't see a new version until they run the refresh command (or opt into auto-update).
+> **Pin the marketplace to `main`, not a feature branch.** If a client added the marketplace with `--ref <branch>` (Codex) or an `extraKnownMarketplaces … "ref"` entry in `~/.claude/settings.json` (Claude Code), it will stay frozen on that branch and never see releases. Add it with **no ref** so it follows `main`.
+
+### A note on `geekbot--v*` git tags
+
+Claude Code only consults `{plugin}--v{version}` tags for **version-constrained / dependency installs** (a plugin pinned to a semver range, or pulled in as another plugin's dependency) — see the Claude Code plugin-dependencies docs. This repo doesn't distribute the plugin that way, so **no tag is required** for normal installs. If you ever adopt version-pinned distribution, cut the tag with `claude plugin tag --push` (it validates the manifests agree, then pushes `geekbot--v<version>` — a plain git tag in this repo; nothing goes to Anthropic).
