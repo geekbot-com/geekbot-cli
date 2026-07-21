@@ -100,6 +100,36 @@ geekbot standup list         # structured JSON on stdout
 
 ---
 
+### Keeping Geekbot up to date
+
+Plugin updates are **pull-based** — when a new version ships, your agent won't pick it up on its own (auto-update is off by default for third-party marketplaces). Refresh it yourself:
+
+<details open>
+<summary><b>Claude Code</b></summary>
+
+```shell
+# Inside Claude Code:
+/plugin marketplace update geekbot-cli
+/reload-plugins
+```
+
+Or turn on auto-update once: run `/plugin` → **Marketplaces** → select `geekbot-cli` → **Enable auto-update**. Claude Code then refreshes after each session starts.
+</details>
+
+<details>
+<summary><b>Codex CLI</b></summary>
+
+```shell
+# Refresh the marketplace snapshot, then re-install to pick up the new version:
+codex plugin marketplace upgrade geekbot-cli
+codex plugin add geekbot@geekbot-cli
+```
+</details>
+
+> The `geekbot` CLI binary updates independently of the plugin: `npm install -g geekbot-cli@latest` (or `bun install -g geekbot-cli`).
+
+---
+
 ## 🛠️ Commands
 
 The CLI follows a `geekbot <resource> <action> [options]` pattern. Run `geekbot <resource> <action> --help` for the full option list on any command. It wraps the Geekbot API — see [developers.geekbot.com](https://developers.geekbot.com) for the underlying endpoints and full data shapes.
@@ -269,6 +299,8 @@ Then:
 4. Open a pull request against `main`.
 
 Found a bug or have an idea? [Open an issue](https://github.com/geekbot-com/geekbot-cli/issues).
+
+Maintainers: see [RELEASING.md](RELEASING.md) for how the npm CLI and the agent plugin are versioned and published — they're two separate release lines.
 
 ## 📄 License
 
