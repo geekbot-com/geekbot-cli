@@ -10,7 +10,7 @@ import { APP_NAME, APP_VERSION } from "../../src/utils/constants.ts";
  * global options, exitOverride, and configureOutput.
  */
 
-const EXPECTED_COMMANDS = ["standup", "report", "poll", "auth", "me", "team"];
+const EXPECTED_COMMANDS = ["standup", "report", "poll", "ooo", "auth", "me", "team"];
 
 describe("CLI program registration", () => {
 	test("program is named with APP_NAME and has APP_VERSION set", () => {

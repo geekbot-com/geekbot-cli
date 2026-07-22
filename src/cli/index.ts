@@ -6,6 +6,7 @@ import { ExitCode } from "../errors/exit-codes.ts";
 import { APP_NAME, APP_VERSION } from "../utils/constants.ts";
 import { createAuthCommand } from "./commands/auth.ts";
 import { createMeCommand } from "./commands/me.ts";
+import { createOooCommand } from "./commands/ooo.ts";
 import { createPollCommand } from "./commands/poll.ts";
 import { createReportCommand } from "./commands/report.ts";
 import { createStandupCommand } from "./commands/standup.ts";
@@ -47,6 +48,7 @@ export function createProgram(): Command {
 	program.addCommand(createStandupCommand());
 	program.addCommand(createReportCommand());
 	program.addCommand(createPollCommand());
+	program.addCommand(createOooCommand());
 	program.addCommand(createAuthCommand());
 	program.addCommand(createMeCommand());
 	program.addCommand(createTeamCommand());
