@@ -1,7 +1,7 @@
 {
 	"name": "geekbot",
 	"description": "Manage Geekbot standups, reports, and polls from Claude via the geekbot CLI",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"author": { "name": "Geekbot" },
 	"homepage": "https://github.com/geekbot-com/geekbot-cli"
 }
