@@ -66,6 +66,18 @@ export function validateSlackIdList(value: string, label: string): string[] {
 }
 
 /**
+ * Validate a comma-separated list of numeric IDs (positive integers).
+ */
+export function validateNumericIdList(value: string, label: string): number[] {
+	const parts = value.split(",");
+	const result: number[] = [];
+	for (const part of parts) {
+		result.push(validateNumericId(part.trim(), label));
+	}
+	return result;
+}
+
+/**
  * Validate that a string is a valid non-negative integer (for wait_time etc.).
  */
 export function validateWaitTime(value: string): number {

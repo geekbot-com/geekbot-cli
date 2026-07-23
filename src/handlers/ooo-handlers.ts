@@ -8,12 +8,19 @@ import { writeOutput } from "../output/formatter.ts";
 import { V2OooItemResponseSchema, V2OooListResponseSchema } from "../schemas/v2-ooo.ts";
 import { parseDateFilter, parseV2DateFilter } from "../utils/input-parsers.ts";
 import { buildReceipt } from "../utils/receipt.ts";
-import { validateLimit, validateNumericId, validateSlackId } from "../utils/validation.ts";
+import {
+	validateLimit,
+	validateNumericId,
+	validateNumericIdList,
+	validateSlackId,
+	validateSlackIdList,
+} from "../utils/validation.ts";
 
 // ── Option Interfaces ─────────────────────────────────────────────────
 
 export interface OooListOptions {
-	user?: string;
+	users?: string;
+	standups?: string;
 	cursor?: string;
 	pageSize?: string;
 	after?: string;
@@ -74,17 +81,33 @@ function buildParams(
 /**
  * Handle `geekbot ooo list` command.
  * Fetches out-of-office periods from GET /v2/ooo (cursor-paginated, single
- * page per call). Without a date window the API returns current and upcoming
- * periods; `--after`/`--before` map to v2 `since`/`until` like `report list`.
+ * page per call) for every member the caller can view. `--users`/`--standups`
+ * narrow the result (the API intersects them with the caller's view rights and
+ * silently drops inaccessible ids); they are mutually exclusive, mirroring the
+ * API. Without a date window the API returns current and upcoming periods;
+ * `--after`/`--before` map to v2 `since`/`until` like `report list`.
  */
 export async function handleOooList(
 	options: OooListOptions,
 	globalOpts: GlobalOptions,
 ): Promise<void> {
+	if (options.users && options.standups) {
+		throw new CliError(
+			"--users and --standups cannot be combined.",
+			"validation_error",
+			ExitCode.VALIDATION,
+			false,
+			"Provide one filter or the other, e.g.: geekbot ooo list --users U123 or geekbot ooo list --standups 42",
+		);
+	}
+
 	const client = await createAuthenticatedClient(globalOpts);
 
 	const params = buildParams({
-		user_id: options.user ? validateSlackId(options.user, "user ID") : undefined,
+		users: options.users ? validateSlackIdList(options.users, "user ID").join(",") : undefined,
+		standups: options.standups
+			? validateNumericIdList(options.standups, "standup ID").join(",")
+			: undefined,
 		cursor: options.cursor,
 		limit: options.pageSize ? String(validateLimit(options.pageSize)) : undefined,
 		since: options.after ? parseV2DateFilter(options.after, "--after") : undefined,

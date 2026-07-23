@@ -16,8 +16,17 @@ export function createOooCommand(): Command {
 
 	ooo
 		.command("list")
-		.description("List current and upcoming out-of-office periods (v2)")
-		.option("--user <id>", "Slack-style user ID (admins listing another member, e.g. U123)")
+		.description(
+			"List current and upcoming out-of-office periods for every member you can view (v2)",
+		)
+		.option(
+			"--users <ids>",
+			"Comma-separated Slack-style user IDs to restrict to (e.g. U123,U456; inaccessible ids are dropped; cannot be combined with --standups)",
+		)
+		.option(
+			"--standups <ids>",
+			"Comma-separated standup IDs — restrict to members of these standups (cannot be combined with --users)",
+		)
 		.option("--cursor <token>", "Opaque pagination cursor from a previous response")
 		.option("--page-size <n>", "Page size (1-100, default 25)")
 		.option(
@@ -30,7 +39,7 @@ export function createOooCommand(): Command {
 		)
 		.addHelpText(
 			"after",
-			'\nExamples:\n  geekbot ooo list\n  geekbot ooo list --user U08LXSA31BJ\n  geekbot ooo list --after 2026-01-01 --before 2026-07-01\n  geekbot ooo list --page-size 50\n  geekbot ooo list --cursor "<token>"',
+			'\nExamples:\n  geekbot ooo list\n  geekbot ooo list --users U08LXSA31BJ,U08LXSA31BK\n  geekbot ooo list --standups 123,456\n  geekbot ooo list --after 2026-01-01 --before 2026-07-01\n  geekbot ooo list --page-size 50\n  geekbot ooo list --cursor "<token>"',
 		)
 		.action(async function (this: Command) {
 			const globalOpts = getGlobalOptions(this);
@@ -38,7 +47,8 @@ export function createOooCommand(): Command {
 				const opts = this.opts();
 				await handleOooList(
 					{
-						user: opts.user,
+						users: opts.users,
+						standups: opts.standups,
 						cursor: opts.cursor,
 						pageSize: opts.pageSize,
 						after: opts.after,

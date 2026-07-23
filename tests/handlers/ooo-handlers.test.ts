@@ -79,13 +79,28 @@ describe("handleOooList", () => {
 		expect(mockGet).toHaveBeenCalledWith("/v2/ooo", undefined);
 	});
 
-	test("maps --user, --cursor, --page-size to user_id, cursor, limit", async () => {
-		await handleOooList({ user: "U08LXSA31BJ", cursor: "tok", pageSize: "50" }, defaultGlobalOpts);
+	test("maps --users, --cursor, --page-size to users, cursor, limit", async () => {
+		await handleOooList(
+			{ users: "U08LXSA31BJ, U08LXSA31BK", cursor: "tok", pageSize: "50" },
+			defaultGlobalOpts,
+		);
 		expect(mockGet).toHaveBeenCalledWith("/v2/ooo", {
-			user_id: "U08LXSA31BJ",
+			users: "U08LXSA31BJ,U08LXSA31BK",
 			cursor: "tok",
 			limit: "50",
 		});
+	});
+
+	test("maps --standups to standups", async () => {
+		await handleOooList({ standups: "12, 34" }, defaultGlobalOpts);
+		expect(mockGet).toHaveBeenCalledWith("/v2/ooo", { standups: "12,34" });
+	});
+
+	test("rejects --users combined with --standups before any request", async () => {
+		await expect(
+			handleOooList({ users: "U08LXSA31BJ", standups: "12" }, defaultGlobalOpts),
+		).rejects.toThrow(/--users and --standups cannot be combined/);
+		expect(mockGet).not.toHaveBeenCalled();
 	});
 
 	test("maps --after/--before to since/until and omits them by default", async () => {
@@ -110,9 +125,16 @@ describe("handleOooList", () => {
 		expect(mockGet).not.toHaveBeenCalled();
 	});
 
-	test("rejects invalid --user value", async () => {
-		await expect(handleOooList({ user: "not-a-slack-id" }, defaultGlobalOpts)).rejects.toThrow(
-			/Invalid user ID/,
+	test("rejects invalid --users value (any bad element)", async () => {
+		await expect(
+			handleOooList({ users: "U08LXSA31BJ,not-a-slack-id" }, defaultGlobalOpts),
+		).rejects.toThrow(/Invalid user ID/);
+		expect(mockGet).not.toHaveBeenCalled();
+	});
+
+	test("rejects invalid --standups value (any bad element)", async () => {
+		await expect(handleOooList({ standups: "12,abc" }, defaultGlobalOpts)).rejects.toThrow(
+			/Invalid standup ID/,
 		);
 		expect(mockGet).not.toHaveBeenCalled();
 	});

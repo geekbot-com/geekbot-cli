@@ -5,6 +5,7 @@ import {
 	validateDayAbbreviations,
 	validateLimit,
 	validateNumericId,
+	validateNumericIdList,
 	validateSlackId,
 	validateSlackIdList,
 	validateTimeFormat,
@@ -18,6 +19,7 @@ describe("validation module public API", () => {
 			"validateDayAbbreviations",
 			"validateLimit",
 			"validateNumericId",
+			"validateNumericIdList",
 			"validateSlackId",
 			"validateSlackIdList",
 			"validateTimeFormat",
@@ -137,6 +139,28 @@ describe("validateSlackIdList", () => {
 
 	test("throws CliError when any value is invalid", () => {
 		expect(() => validateSlackIdList("U123,bad,U456", "user ID")).toThrow(CliError);
+	});
+});
+
+describe("validateNumericIdList", () => {
+	test("returns number array for comma-separated numeric IDs", () => {
+		expect(validateNumericIdList("12,34", "standup ID")).toEqual([12, 34]);
+	});
+
+	test("returns single-element array for single ID", () => {
+		expect(validateNumericIdList("123", "standup ID")).toEqual([123]);
+	});
+
+	test("handles whitespace around values", () => {
+		expect(validateNumericIdList("12, 34, 56", "standup ID")).toEqual([12, 34, 56]);
+	});
+
+	test("throws CliError when any value is invalid", () => {
+		expect(() => validateNumericIdList("12,abc,34", "standup ID")).toThrow(CliError);
+	});
+
+	test("throws CliError for zero or negative ids", () => {
+		expect(() => validateNumericIdList("12,0", "standup ID")).toThrow(CliError);
 	});
 });
 
