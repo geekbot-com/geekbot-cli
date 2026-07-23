@@ -1,6 +1,7 @@
 {
 	"name": "geekbot",
 	"version": "0.4.0",
+	"minCliVersion": "2.0.0",
 	"description": "Manage Geekbot standups, reports, and polls from Codex via the geekbot CLI",
 	"author": { "name": "Geekbot" },
 	"homepage": "https://github.com/geekbot-com/geekbot-cli",

@@ -31,6 +31,10 @@ Run `check-cli.sh` on first invocation. If it fails:
 - **CLI not found**: Install via `npm install -g geekbot-cli` (requires
   Bun >= 1.3.5 runtime). Note: `npx geekbot-cli` also requires Bun on
   PATH — it is not a Node.js fallback.
+- **CLI outdated** (`cli_outdated`): the installed CLI is older than the
+  `minCliVersion` this plugin declares, so documented flags may not exist
+  yet. Prompt the user to update via `npm install -g geekbot-cli@latest`
+  (offer to run it) and re-run the check before continuing.
 - **Auth not configured**: Guide the user to run `geekbot auth login`,
   which uses the OAuth 2.1 authorization-code + PKCE flow with a
   `http://127.0.0.1:<port>/callback` loopback redirect and writes the
