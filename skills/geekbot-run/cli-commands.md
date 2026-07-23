@@ -333,31 +333,37 @@ poll's current members — a sign it needs syncing.
 
 Out-of-office periods pause standup notifications for a user while they are
 away — the same periods a user sets by messaging `ooo` to the Geekbot bot.
-By default commands operate on the authenticated user; admins can manage
-another member's periods with `--user <id>` (Slack-style ID). All dates are
-`YYYY-MM-DD`; `end_date` is inclusive. Overlapping periods are allowed —
-each entry is independent.
+Write commands operate on the authenticated user; admins can create a
+period for another member with `ooo create --user <id>` (Slack-style ID).
+All dates are `YYYY-MM-DD`; `end_date` is inclusive. Overlapping periods
+are allowed — each entry is independent.
 
 ### ooo list
 
-List out-of-office periods via `GET /v2/ooo`. By default only current and
+List out-of-office periods via `GET /v2/ooo` for every member you can view
+(admins: the whole team; members: themselves and teammates sharing an
+active standup). `--users` / `--standups` narrow the result — one or the
+other, never both (combining them is rejected). By default only current and
 upcoming periods are returned; `--after`/`--before` bound the date window
 like `report list` (a period matches when it overlaps the window), so an
 `--after` in the past retrieves historical periods. Cursor-paginated,
 ordered by start date.
 
 ```bash
-geekbot ooo list                          # your own current + upcoming periods
+geekbot ooo list                          # every visible member's current + upcoming periods
+geekbot ooo list --users U08LXSA31BJ      # one member's
+geekbot ooo list --users U08LXSA31BJ,U08LXSA31BK   # several members'
+geekbot ooo list --standups 123           # members of a standup
 geekbot ooo list --after 2026-01-01       # history since Jan 1 (plus upcoming)
 geekbot ooo list --after 2026-01-01 --before 2026-07-01   # bounded window
-geekbot ooo list --user U08LXSA31BJ       # another member's
 geekbot ooo list --page-size 50           # larger page
 geekbot ooo list --cursor "<token>"       # next page
 ```
 
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--user <id>` | you | Slack-style user ID; admins can list anyone, members can list teammates they share an active standup with |
+| `--users <ids>` | everyone visible | Comma-separated Slack-style user IDs; ids you cannot view are silently dropped. Cannot be combined with `--standups` |
+| `--standups <ids>` | — | Comma-separated standup IDs — restricts to members of these standups. Cannot be combined with `--users` |
 | `--after <date>` | now | Only periods ending on/after this date (v2 `since`, inclusive) — set a past date for history |
 | `--before <date>` | — | Only periods starting before this date (v2 `until`, exclusive) |
 | `--cursor <token>` | — | Opaque pagination cursor from a previous response |

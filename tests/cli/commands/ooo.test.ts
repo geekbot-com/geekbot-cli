@@ -80,8 +80,8 @@ describe("createOooCommand", () => {
 			[
 				"ooo",
 				"list",
-				"--user",
-				"U08LXSA31BJ",
+				"--users",
+				"U08LXSA31BJ,U08LXSA31BK",
 				"--cursor",
 				"opaque",
 				"--page-size",
@@ -97,12 +97,25 @@ describe("createOooCommand", () => {
 		);
 		expect(mockHandlers.handleOooList).toHaveBeenCalledWith(
 			expect.objectContaining({
-				user: "U08LXSA31BJ",
+				users: "U08LXSA31BJ,U08LXSA31BK",
 				cursor: "opaque",
 				pageSize: "50",
 				after: "2026-01-01",
 				before: "2026-07-01",
 			}),
+			expect.anything(),
+		);
+	});
+
+	test("list subcommand passes --standups to handler", async () => {
+		const program = new Command();
+		addGlobalOptions(program);
+		program.addCommand(createOooCommand());
+		await program.parseAsync(["ooo", "list", "--standups", "12,34", "--api-key", "test"], {
+			from: "user",
+		});
+		expect(mockHandlers.handleOooList).toHaveBeenCalledWith(
+			expect.objectContaining({ standups: "12,34" }),
 			expect.anything(),
 		);
 	});
