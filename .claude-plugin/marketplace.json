@@ -6,7 +6,7 @@
 	},
 	"metadata": {
 		"description": "Geekbot CLI — standups, reports, polls from the terminal and AI agents",
-		"version": "0.4.0"
+		"version": "0.4.1"
 	},
 	"plugins": [
 		{
