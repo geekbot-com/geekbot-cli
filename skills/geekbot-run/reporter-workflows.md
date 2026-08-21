@@ -46,10 +46,9 @@ Store the question ID ↔ text mapping for use in step 5.
 Context comes from three sources. Check them in this order — each one makes
 the draft richer.
 
-#### Source A: Connected MCP servers (opportunistic enrichment)
+#### Source A: Connected MCP servers (enrichment with session reconnect)
 
-Check what MCP servers are available in the current session. Use whatever
-is connected to pull the user's recent activity. This is what transforms
+Pull the user's recent activity from MCP. This is what transforms
 "help me write my standup" from a Q&A session into a one-click draft.
 
 The key concept: map MCP entities to standup questions — what they *did*,
@@ -77,15 +76,30 @@ closes PROJ-89" is better than listing each separately.
 GitHub usernames, emails). If they don't match, ask the user once and
 reuse for the conversation.
 
-**Enrichment flow:**
-1. Silently check which MCP servers are connected
-2. Pull recent activity from each (since last report date)
-3. Deduplicate across tools, group by standup question
-4. Present: "I pulled your recent activity — here's what I found"
+**Why "not found" ≠ missing:** OAuth MCP plugins may be installed and even
+listed in the agent system prompt, yet absent from the live tool catalog
+until the server's auth tool runs in this session. Catalog omission,
+`needsAuth` (or equivalent), "MCP server not found", or an auth-only tool
+surface should trigger **one reconnect attempt** — not an immediate silent
+skip. Prefer servers that can map to the questions above; do not require a
+specific vendor stack.
 
-If no MCP servers are connected, skip silently. Don't mention missing
-access unprompted — explain only if the user asks why the draft isn't
-auto-populated.
+**Enrichment flow:**
+1. Identify enrichment-relevant MCP servers available to this session
+   (prompt/catalog/config), especially those matching the table above
+2. For each candidate that is not `ready`: call its auth tool once, then
+   re-check tools for that server
+3. Pull recent activity from each ready server (since last report date).
+   If MCP stays unavailable but a well-known CLI fallback exists for that
+   source, use the fallback
+4. Deduplicate across tools, group by standup question
+5. Present: "I pulled your recent activity — here's what I found" and name
+   the sources that contributed
+
+If reconnect fails or the user cancels OAuth, continue with whatever
+sources worked. Note skipped sources in one short line when showing the
+draft — do not block drafting or start a troubleshooting session unless
+the user asks.
 
 #### Source B: Previous Geekbot reports (always available)
 

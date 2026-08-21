@@ -112,13 +112,42 @@ For full flag details, see `cli-commands.md`.
 ## External Context Enrichment
 
 The skill becomes dramatically more useful when it can pull data from where
-work actually happens. This is **opportunistic** — check what MCP servers
-are connected in the current session and use whatever is available. Never
-fail or complain if nothing is connected; just fall back to asking the user.
+work actually happens. Prefer MCP enrichment for report drafts when relevant
+servers can be made ready; fall back to asking the user only after reconnect
+attempts fail (or when no enrichment sources apply).
 
-**For report drafting:** Pull the user's recent activity from connected MCP
-servers (GitHub, Jira, Calendar, Slack) and use it to pre-populate a draft.
-The user reviews and approves instead of writing from scratch.
+**Session auth (before treating a source as missing):**
+OAuth MCP plugins are often configured on disk (and may even appear in the
+agent system prompt) but absent from the live tool catalog until authenticated
+in *this* session. That commonly looks like "server not found" / an incomplete
+catalog — not always a clear `needsAuth`-style status. Do **not** skip on
+first miss.
+
+When drafting a report, attempt reconnect for enrichment-relevant MCP servers
+already known to the session (advertised in the prompt, present under the
+workspace MCP config, or previously used in the conversation). Typical
+examples include issue trackers, chat/team messaging, git hosts, and calendar —
+use whatever maps to the standup questions (see `reporter-workflows.md`).
+Do not hard-require a specific vendor; do not nag about servers that cannot
+contribute to the draft.
+
+**Reconnect flow (per server, once per conversation):**
+1. Inspect MCP tools/catalog for that server. If status is `ready`, use it.
+2. If status indicates auth is required, the server is missing from the catalog,
+   lookup returns "not found", or the only exposed tool is an auth/login tool
+   (e.g. `mcp_auth`) → invoke that server's auth tool once.
+3. Re-inspect tools for that server; then query.
+4. If auth fails or the user dismisses OAuth, skip that source and continue.
+   When presenting the draft, mention skipped sources briefly (so the user can
+   retry) — do not turn a miss into a troubleshooting session unless they ask.
+
+If a source has a well-known non-MCP fallback (for example a git host CLI),
+using that fallback after MCP reconnect fails is fine. Never fail the whole
+standup flow because one MCP is down.
+
+**For report drafting:** Pull recent activity from ready enrichment sources
+and pre-populate the draft. The user reviews and approves instead of writing
+from scratch.
 
 **For analytics:** Cross-reference standup report data with delivery data
 to give richer insights — not just "who posted" but "what was actually shipped."
@@ -128,7 +157,7 @@ For entity mapping tables and deduplication strategy, see `reporter-workflows.md
 **Important boundaries:**
 - Always show the user what data you pulled and from where
 - Never post a report containing enrichment data without user review
-- If an MCP server query fails, skip it silently and move on
+- After a successful connect, if a *query* fails, skip that query and move on
 - Enrichment provides specifics (PR numbers, ticket IDs); the user's
   voice still drives the narrative
 
@@ -309,9 +338,13 @@ exit code.
 
 - **Inventing report answers** — if the user didn't provide enough context
   for a question, ask. Never guess or fabricate.
-- **Retrying auth errors** — exit code 4 is never transient. Guide the user
-  to `geekbot auth login` (or `geekbot auth setup --api-key` as fallback)
-  instead.
+- **Treating MCP "not found" as permanently unavailable** — for OAuth
+  enrichment servers, run the server's auth tool once and retry before
+  skipping. Catalog omission is often unauthenticated session state, not
+  missing install.
+- **Retrying Geekbot auth errors** — exit code 4 is never transient. Guide
+  the user to `geekbot auth login` (or `geekbot auth setup --api-key` as
+  fallback) instead.
 - **Dumping raw JSON** — format output as tables, summaries, or narratives.
   The user should never see a raw JSON envelope.
 - **Ignoring `error.suggestion`** — when a resource isn't found (exit 3),
