@@ -6,7 +6,7 @@
 
 [Geekbot](https://geekbot.com) runs asynchronous standups, check-ins, and polls in Slack and Microsoft Teams. This CLI lets you run them straight from your AI coding agent — or the terminal.
 
-Every command returns structured JSON with machine-readable exit codes, credentials live in your OS keychain (never in dotfiles), and it works wherever your agent does — Claude Code, Claude Desktop, Codex CLI, Gemini CLI, and any Agent Skills tool (Cursor, Windsurf, Copilot, …).
+Every command returns structured JSON with machine-readable exit codes, credentials live in your OS keychain (never in dotfiles), and it works wherever your agent does — Claude Code, Claude Desktop, Codex CLI, Cursor, Gemini CLI, and any Agent Skills tool (Windsurf, Copilot, …).
 
 ## 🚀 Quick Start
 
@@ -48,6 +48,19 @@ Then start `codex`, open `/plugins`, find **geekbot** under the `geekbot-cli` ma
 </details>
 
 <details>
+<summary><b>Cursor</b></summary>
+
+```shell
+# Register the marketplace (shell, via the Cursor CLI `agent`):
+agent plugin marketplace add https://github.com/geekbot-com/geekbot-cli
+```
+
+Then in the Cursor agent (IDE chat or the `agent` CLI), run `/plugin`, open the **Marketplace** tab, find **geekbot** under `geekbot-cli`, and install it at **user** scope so it's available in every project. You can also register the marketplace from inside the agent with `/plugin marketplace add https://github.com/geekbot-com/geekbot-cli`.
+
+> **Teams / Enterprise:** an admin can instead import the repo once for everyone — **Dashboard → Plugins → Team Marketplaces → Add Marketplace → Import from Repo**, paste `https://github.com/geekbot-com/geekbot-cli`, then mark **geekbot** as Optional (or Required to auto-install).
+</details>
+
+<details>
 <summary><b>Gemini CLI</b></summary>
 
 ```shell
@@ -56,7 +69,7 @@ gemini extensions new geekbot --from geekbot-com/geekbot-cli
 </details>
 
 <details>
-<summary><b>Cursor, Windsurf, Copilot & 60+ other agents</b></summary>
+<summary><b>Windsurf, Copilot & 60+ other agents</b></summary>
 
 These tools don't use plugins — they support the open **Agent Skills** convention (a `SKILL.md` file the agent auto-discovers). Install the Geekbot skill into all of them at once with [Vercel Skills](https://github.com/vercel-labs/skills), which detects your installed agents and copies (or symlinks) the skill into each one's `skills/` directory:
 
@@ -64,7 +77,7 @@ These tools don't use plugins — they support the open **Agent Skills** convent
 npx skills add geekbot-com/geekbot-cli
 ```
 
-This covers Cursor, Windsurf, GitHub Copilot, Cline, Roo Code, Zed, and [dozens more](https://github.com/vercel-labs/skills#supported-agents).
+This covers Windsurf, GitHub Copilot, Cline, Roo Code, Zed, and [dozens more](https://github.com/vercel-labs/skills#supported-agents). It also works for Cursor if you'd rather skip the plugin.
 </details>
 
 ### Step 2 — Ask your agent to set up Geekbot
@@ -124,6 +137,17 @@ Or turn on auto-update once: run `/plugin` → **Marketplaces** → select `geek
 codex plugin marketplace upgrade geekbot-cli
 codex plugin add geekbot@geekbot-cli
 ```
+</details>
+
+<details>
+<summary><b>Cursor</b></summary>
+
+```shell
+# Re-index the marketplace, then reinstall geekbot from /plugin → Marketplace:
+agent plugin marketplace update geekbot-cli
+```
+
+Team marketplaces imported from the repo can turn on **Enable Auto Refresh** in the Dashboard so every push to `main` is picked up automatically.
 </details>
 
 > The `geekbot` CLI binary updates independently of the plugin: `npm install -g geekbot-cli@latest` (or `bun install -g geekbot-cli`).

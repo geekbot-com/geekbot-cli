@@ -9,15 +9,16 @@ set -euo pipefail
 # --- plugin manifest (plugin version + CLI requirement) ---------------------
 # Prefer CLAUDE_PLUGIN_ROOT (set by Claude Code for plugin components, but
 # unreliable in some contexts), then walk up from this script's location:
-# <plugin root>/skills/geekbot-run/check-cli.sh in both the Claude and Codex
-# packagings. Standalone skill installs (npx skills add) ship no manifest —
-# the plugin/requirement checks are skipped there.
+# <plugin root>/skills/geekbot-run/check-cli.sh in the Claude, Codex and
+# Cursor packagings. Standalone skill installs (npx skills add) ship no
+# manifest — the plugin/requirement checks are skipped there.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PLUGIN_MANIFEST=""
 for candidate in \
   "${CLAUDE_PLUGIN_ROOT:-}/.claude-plugin/plugin.json" \
   "$SCRIPT_DIR/../../.claude-plugin/plugin.json" \
-  "$SCRIPT_DIR/../../.codex-plugin/plugin.json"; do
+  "$SCRIPT_DIR/../../.codex-plugin/plugin.json" \
+  "$SCRIPT_DIR/../../.cursor-plugin/plugin.json"; do
   if [ -f "$candidate" ]; then
     PLUGIN_MANIFEST="$candidate"
     break
