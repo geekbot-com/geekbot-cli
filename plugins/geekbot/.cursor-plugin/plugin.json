@@ -2,7 +2,7 @@
 	"name": "geekbot",
 	"displayName": "Geekbot",
 	"description": "Manage Geekbot standups, reports, and polls from Cursor via the geekbot CLI",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"minCliVersion": "2.0.0",
 	"author": {
 		"name": "Geekbot",

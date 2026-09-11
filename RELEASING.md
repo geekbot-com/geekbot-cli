@@ -45,7 +45,7 @@ Updates are **pull-based** — nobody can push a plugin update to users. All sup
 |------|--------|--------------------------|---------------------|
 | **Claude Code** | the marketplace's default branch (`main`) | the change is **merged to `main`** | `/plugin marketplace update geekbot-cli` + `/reload-plugins` |
 | **Codex** | the marketplace ref (default `main`) | the change is **merged to `main`** | `codex plugin marketplace upgrade geekbot-cli` + `codex plugin add geekbot@geekbot-cli` |
-| **Cursor** | the marketplace ref (default `main`) | the change is **merged to `main`** | `agent plugin marketplace update geekbot-cli`, then reinstall from `/plugin` → Marketplace (team marketplaces: **Refresh** or **Enable Auto Refresh** in the Dashboard) |
+| **Cursor** | the marketplace ref (default `main`), or a local clone | the change is **merged to `main`** | CLI marketplace: `agent plugin marketplace update geekbot-cli`, then reinstall from `/plugin` → Marketplace. Team marketplace imported from a local clone: `git pull` the clone, then **Refresh** in the Dashboard. Local plugin folder: `git pull`, then **Developer: Reload Window** |
 
 Auto-update is **off by default** for third-party marketplaces, so most users won't see a new version until they run the refresh command (or opt into auto-update). End-user refresh commands also live in the README's *Keeping Geekbot up to date* section.
 

@@ -50,14 +50,34 @@ Then start `codex`, open `/plugins`, find **geekbot** under the `geekbot-cli` ma
 <details>
 <summary><b>Cursor</b></summary>
 
+Pick whichever fits your setup. All three give you the same **geekbot** plugin and its skills.
+
+**A. Cursor CLI (any plan)** — register the marketplace from a shell, then install from inside Cursor:
+
 ```shell
-# Register the marketplace (shell, via the Cursor CLI `agent`):
 agent plugin marketplace add https://github.com/geekbot-com/geekbot-cli
 ```
 
-Then in the Cursor agent (IDE chat or the `agent` CLI), run `/plugin`, open the **Marketplace** tab, find **geekbot** under `geekbot-cli`, and install it at **user** scope so it's available in every project. You can also register the marketplace from inside the agent with `/plugin marketplace add https://github.com/geekbot-com/geekbot-cli`.
+Open the Cursor agent (IDE chat or the `agent` CLI), run `/plugin`, open the **Marketplace** tab, find **geekbot** under `geekbot-cli`, and install it at **user** scope. The marketplace is tied to your Cursor account, so it also shows up in Cursor Desktop under **Customize → Plugins**.
 
-> **Teams / Enterprise:** an admin can instead import the repo once for everyone — **Dashboard → Plugins → Team Marketplaces → Add Marketplace → Import from Repo**, paste `https://github.com/geekbot-com/geekbot-cli`, then mark **geekbot** as Optional (or Required to auto-install).
+**B. Team marketplace from a local clone (Teams / Enterprise admin)** — clone the repo, then import the clone as a team marketplace so everyone on the team can install it:
+
+```shell
+git clone https://github.com/geekbot-com/geekbot-cli.git
+```
+
+In the Cursor Dashboard go to **Plugins → Team Marketplaces → Add Marketplace**, choose **Import from local directory**, and select the `geekbot-cli` folder you just cloned. Mark **geekbot** as *Optional* (or *Required* to auto-install it for everyone) and save. Team members then install it from **Customize → Plugins** in Cursor Desktop. If **Import from Repo** with the GitHub URL comes back with "no plugins found", use this local-clone import instead.
+
+**C. Local plugin folder (no marketplace)** — clone the repo and link the plugin into Cursor's local plugins folder:
+
+```shell
+git clone https://github.com/geekbot-com/geekbot-cli.git
+ln -s "$(pwd)/geekbot-cli/plugins/geekbot" ~/.cursor/plugins/local/geekbot
+```
+
+Run **Developer: Reload Window** in Cursor and the plugin appears under **Customize → Plugins**. On Teams and Enterprise plans an admin must have **Allow Local Plugin Imports** enabled.
+
+> **Windows:** the local plugins folder is `%USERPROFILE%\.cursor\plugins\local`. The `geekbot` CLI itself needs a Unix-like shell (WSL, Git Bash), so open your project from WSL if you use it.
 </details>
 
 <details>
@@ -143,11 +163,14 @@ codex plugin add geekbot@geekbot-cli
 <summary><b>Cursor</b></summary>
 
 ```shell
-# Re-index the marketplace, then reinstall geekbot from /plugin → Marketplace:
+# A. CLI marketplace — re-index, then reinstall geekbot from /plugin → Marketplace:
 agent plugin marketplace update geekbot-cli
+
+# B / C. Local clone — pull, then refresh:
+git -C geekbot-cli pull
 ```
 
-Team marketplaces imported from the repo can turn on **Enable Auto Refresh** in the Dashboard so every push to `main` is picked up automatically.
+After pulling a local clone: for a team marketplace click **Refresh** on it in the Dashboard; for the local plugin folder run **Developer: Reload Window**.
 </details>
 
 > The `geekbot` CLI binary updates independently of the plugin: `npm install -g geekbot-cli@latest` (or `bun install -g geekbot-cli`).
