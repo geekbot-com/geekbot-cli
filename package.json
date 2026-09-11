@@ -25,7 +25,8 @@
 		"test:integration": "bun test tests/integration/",
 		"lint": "bunx biome check .",
 		"format": "bunx biome format --write .",
-		"check": "bunx biome check --write ."
+		"check": "bunx biome check --write .",
+		"sync:skills": "node scripts/sync-plugin-skills.mjs"
 	},
 	"publishConfig": {
 		"access": "public",

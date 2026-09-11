@@ -19,5 +19,8 @@ bun run lint
 echo "pre-commit: bunx tsc --noEmit"
 bunx tsc --noEmit
 
+echo "pre-commit: plugins/geekbot/skills mirrors skills/"
+bun test tests/ci/plugin-skills-sync.test.ts
+
 echo "biome check --staged --no-errors-on-unmatched"
 bunx biome check --staged --no-errors-on-unmatched
