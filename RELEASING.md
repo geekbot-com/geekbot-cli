@@ -30,7 +30,8 @@ The two versions move at their own cadence — a CLI code change bumps the npm v
    - `plugins/geekbot/.codex-plugin/plugin.json` → `version`
    - `plugins/geekbot/.cursor-plugin/plugin.json` → `version`
    - `.cursor-plugin/marketplace.json` → `metadata.version`
-2. Open a PR, merge to `main`.
+2. If you touched anything under `skills/`, run `bun run sync:skills` so `plugins/geekbot/skills` (the copy the Codex and Cursor plugins ship) matches. It is a real copy, not a symlink — GitHub-API-based importers such as Cursor's Dashboard "Import from Repo" cannot follow symlinks. CI fails if the two drift.
+3. Open a PR, merge to `main`.
 
 That's it. The next time a client refreshes its marketplace, it pulls `main` and sees the new version.
 
