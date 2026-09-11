@@ -5,7 +5,7 @@ This repo ships **two independent artifacts** with **separate version lines**. K
 | Artifact | What it is | Version file(s) | Released by |
 |----------|-----------|-----------------|-------------|
 | **npm CLI** (`geekbot-cli`) | the `geekbot` binary users install with `npm i -g` | `package.json` | GitHub Release → `.github/workflows/publish.yml` → `npm publish` |
-| **Agent plugin** (`geekbot`) | the Claude Code / Codex plugin (slash commands + skills) | `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `plugins/geekbot/.codex-plugin/plugin.json` | **merge to `main`** (no separate publish step) |
+| **Agent plugin** (`geekbot`) | the Claude Code / Codex / Cursor plugin (slash commands + skills) | `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `plugins/geekbot/.codex-plugin/plugin.json`, `plugins/geekbot/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json` | **merge to `main`** (no separate publish step) |
 
 The two versions move at their own cadence — a CLI code change bumps the npm version; a skill/README change bumps the plugin version.
 
@@ -24,10 +24,12 @@ The two versions move at their own cadence — a CLI code change bumps the npm v
 
 **There is no publish step and no tag to cut** — clients track this repo's default branch (`main`) and read the version straight from the manifests. Releasing is just merging:
 
-1. Bump the version in **all three** manifests (keep them identical):
+1. Bump the version in **all five** manifests (keep them identical):
    - `.claude-plugin/plugin.json` → `version`
    - `.claude-plugin/marketplace.json` → `metadata.version`
    - `plugins/geekbot/.codex-plugin/plugin.json` → `version`
+   - `plugins/geekbot/.cursor-plugin/plugin.json` → `version`
+   - `.cursor-plugin/marketplace.json` → `metadata.version`
 2. Open a PR, merge to `main`.
 
 That's it. The next time a client refreshes its marketplace, it pulls `main` and sees the new version.
@@ -36,16 +38,17 @@ That's it. The next time a client refreshes its marketplace, it pulls `main` and
 
 ## How clients get an update
 
-Updates are **pull-based** — nobody can push a plugin update to users. Both supported tools resolve the version the **same way**: they track a git **ref** (this repo's default branch, `main`) and read the plugin manifest from its HEAD. So a merge to `main` *is* the release for both.
+Updates are **pull-based** — nobody can push a plugin update to users. All supported tools resolve the version the **same way**: they track a git **ref** (this repo's default branch, `main`) and read the plugin manifest from its HEAD. So a merge to `main` *is* the release for all of them.
 
 | Tool | Tracks | Picks up a release when… | User refreshes with |
 |------|--------|--------------------------|---------------------|
 | **Claude Code** | the marketplace's default branch (`main`) | the change is **merged to `main`** | `/plugin marketplace update geekbot-cli` + `/reload-plugins` |
 | **Codex** | the marketplace ref (default `main`) | the change is **merged to `main`** | `codex plugin marketplace upgrade geekbot-cli` + `codex plugin add geekbot@geekbot-cli` |
+| **Cursor** | the marketplace ref (default `main`) | the change is **merged to `main`** | `agent plugin marketplace update geekbot-cli`, then reinstall from `/plugin` → Marketplace (team marketplaces: **Refresh** or **Enable Auto Refresh** in the Dashboard) |
 
 Auto-update is **off by default** for third-party marketplaces, so most users won't see a new version until they run the refresh command (or opt into auto-update). End-user refresh commands also live in the README's *Keeping Geekbot up to date* section.
 
-> **Pin the marketplace to `main`, not a feature branch.** If a client added the marketplace with `--ref <branch>` (Codex) or an `extraKnownMarketplaces … "ref"` entry in `~/.claude/settings.json` (Claude Code), it will stay frozen on that branch and never see releases. Add it with **no ref** so it follows `main`.
+> **Pin the marketplace to `main`, not a feature branch.** If a client added the marketplace with `--ref <branch>` (Codex), `--git-ref <branch>` (Cursor) or an `extraKnownMarketplaces … "ref"` entry in `~/.claude/settings.json` (Claude Code), it will stay frozen on that branch and never see releases. Add it with **no ref** so it follows `main`.
 
 ### A note on `geekbot--v*` git tags
 
